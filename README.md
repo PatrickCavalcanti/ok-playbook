@@ -22,9 +22,14 @@ ok-playbook/
 ├── patterns/                        # princípios agnósticos
 │   ├── code-design.md               # 5 camadas, naming, fractal, ARCHITECTURE.md
 │   ├── worktree.md                  # quando criar worktree, permissões Claude Code
-│   ├── feedback-loop.md             # ciclo produtor → backlog → processador
+│   ├── feedback-loop.md             # ciclo produtor → backlog → processador (lazy)
 │   ├── agent.md                     # quando criar agente, anatomia, trio canônico
-│   └── subagent-dispatch.md         # política de modelos, granularidade, isolamento
+│   ├── subagent-dispatch.md         # política de modelos, granularidade, isolamento
+│   ├── git.md                       # convenções de branches, commits, bloqueados
+│   ├── profiles.md                  # modos de operação canônicos (dev-early/stable/review)
+│   ├── permissions.md               # filosofia de .claude/settings.json
+│   ├── memory.md                    # USER-LEVEL: tipologia de memórias persistentes
+│   └── superpowers-workflow.md      # USER-LEVEL: fluxo + roteamento Opus/Sonnet
 ├── agents/                          # protocolos agnósticos de agentes
 │   ├── docs-review.md               # processador de feedback (consome feedback-loop)
 │   └── new-agent.md                 # materializador de novos agentes
@@ -35,8 +40,9 @@ ok-playbook/
 │   └── ARCHITECTURE.md              # template para ARCHITECTURE.md de unidades
 └── install/                         # snippets e templates do instalador
     ├── claude-md-snippet.md         # bloco a inserir no CLAUDE.md do consumidor
+    ├── global-claude-md-snippet.md  # bloco a inserir em ~/.claude/CLAUDE.md (user-level)
     ├── permissions-snippet.json     # permissões path-agnostic pra .claude/settings.json
-    └── okplaybook-template.md       # template do manifesto OKPLAYBOOK.md gerado no root do consumidor
+    └── okplaybook-template.md       # template do manifesto OKPLAYBOOK.md
 ```
 
 ## Como começar — leitura recomendada
@@ -44,10 +50,15 @@ ok-playbook/
 A ordem de dependência conceitual:
 
 1. [`patterns/code-design.md`](patterns/code-design.md) — princípios de estruturação de código (pai filosófico).
-2. [`patterns/feedback-loop.md`](patterns/feedback-loop.md) — ciclo agnóstico de feedback (base de muita coisa).
+2. [`patterns/feedback-loop.md`](patterns/feedback-loop.md) — ciclo agnóstico de feedback (lazy).
 3. [`patterns/agent.md`](patterns/agent.md) — consome o feedback-loop; define o que é "agente".
 4. [`patterns/worktree.md`](patterns/worktree.md) — isolamento físico do trabalho.
-5. [`patterns/subagent-dispatch.md`](patterns/subagent-dispatch.md) — orquestração de subagentes (compõe com worktree).
+5. [`patterns/subagent-dispatch.md`](patterns/subagent-dispatch.md) — orquestração de subagentes.
+6. [`patterns/git.md`](patterns/git.md) — convenções git compartilhadas.
+7. [`patterns/profiles.md`](patterns/profiles.md) — modo da sessão (escolhido no boot).
+8. [`patterns/permissions.md`](patterns/permissions.md) — filosofia das permissões `.claude/settings.json`.
+9. **User-level:** [`patterns/memory.md`](patterns/memory.md) — sistema de memórias persistente.
+10. **User-level:** [`patterns/superpowers-workflow.md`](patterns/superpowers-workflow.md) — workflow + roteamento de modelos.
 
 Os agentes em [`agents/`](agents/) (`docs-review`, `new-agent`) são implementações concretas dos papéis canônicos definidos em `feedback-loop.md` e `agent.md`.
 
@@ -110,10 +121,12 @@ git commit -m "chore: bump ok-playbook"
 
 | Componente | Estado |
 |---|---|
-| Patterns (5) | ✅ migrados de `dev-prompts/project-architecture/ok-design-architecture/` |
-| Agents (docs-review, new-agent) | ✅ migrados — pendente review pra remover resíduo Igris-específico |
+| Patterns originais (code-design, worktree, feedback-loop, agent, subagent-dispatch) | ✅ migrados |
+| Patterns config harness (git, profiles, permissions) | ✅ extraídos |
+| Patterns user-level (memory, superpowers-workflow) | ✅ extraídos |
+| Agents (docs-review, new-agent) | ✅ migrados — alinhados com gatilho lazy do feedback-loop |
 | Templates (4) | ✅ migrados |
-| `INSTALL.md` + snippets | ✅ esqueleto pronto — falta validar contra instalação real |
+| `INSTALL.md` + snippets (project + user-level) | ✅ esqueleto pronto — falta validar contra instalação real |
 | Agentes Igris-específicos (power, module, session-review) | ⏳ não migrados — domínio muito Igris; aguardam extração de versão agnóstica |
 
 ### Próximos passos previstos
