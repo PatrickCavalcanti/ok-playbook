@@ -14,9 +14,11 @@ Materializa um rascunho aprovado em `<drafts-root>/` na estrutura completa: prot
 
 ---
 
-## 0. Abrir arquivo de feedback
+## 0. Feedback (lazy)
 
-Criar `<backlog-root>/new-agent/YYYY-MM-DD_HHmm.md` a partir do template em `<backlog-root>/_template.md`. Registrar fricções continuamente durante a execução.
+**Não criar arquivo no boot.** Quando ocorrer a primeira fricção, correção do usuário ou ambiguidade estruturada nesta execução, criar `<backlog-root>/new-agent/YYYY-MM-DD_HHmm.md` a partir do template em `<backlog-root>/_template.md` e registrar nesse momento. Itens subsequentes anexam ao mesmo arquivo. Se a execução não tiver fricção, nenhum arquivo é criado.
+
+Ver [`../patterns/feedback-loop.md §6`](../patterns/feedback-loop.md) para o protocolo completo do gatilho lazy.
 
 ---
 
