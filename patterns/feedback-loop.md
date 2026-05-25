@@ -44,7 +44,7 @@ Este doc serve a três usos:
 
 ## 4. Anatomia do registro de feedback
 
-Cada execução abre **um arquivo único** no backlog. Estrutura mínima:
+Cada execução que tiver feedback abre **um arquivo único** no backlog — criado no momento do primeiro item registrado, não no boot da sessão (gatilho **lazy**). Estrutura mínima:
 
 ### 4.1 Frontmatter (MUST)
 
@@ -127,6 +127,15 @@ Este é o princípio que faz o loop funcionar. Quatro razões:
 **Operacionalização**: ao registrar fricção, o produtor para a execução por 30s, anota uma linha no arquivo, e continua. Não acumula mentalmente.
 
 **Anti-padrão**: produtor que diz "vou anotar tudo no fim" — invariavelmente esquece metade e racionaliza o resto.
+
+**Gatilho de criação (lazy)**: o arquivo *nasce* no momento do primeiro item registrado. Não criar no §0 da execução, não criar vazio, não criar "pra marcar presença". Quando a primeira fricção ocorrer, o produtor:
+
+1. Cria o arquivo a partir do template canônico (§4.2).
+2. Preenche frontmatter (`producer`, `date`, `status: pending-review`, `reviewed_at: null`).
+3. Registra a primeira linha de fricção em "Dificuldades e fricções".
+4. Continua a execução. Itens subsequentes anexam ao mesmo arquivo.
+
+Execução sem fricção real **não gera arquivo**. A homogeneidade do sinal vem do gatilho ("toda fricção é registrada"), não da existência forçada do arquivo.
 
 ---
 
@@ -234,7 +243,7 @@ Todo produtor termina sua execução com a mesma oferta:
 
 Contagem inclui feedbacks de sessões *anteriores* ainda pendentes — o processador é a oportunidade natural de drenar o backlog.
 
-**Não condicionar à existência de fricção significativa.** Mesmo execução "limpa" gera arquivo (com seções vazias) — homogeneíza o sinal.
+**Sobre execuções limpas (sem arquivo criado)**: a oferta de processar continua existindo — sempre pode haver pendentes de sessões anteriores. Quando não há arquivo nesta execução, citar apenas a contagem de pendentes anteriores. Quando há arquivo desta execução, somá-lo à contagem.
 
 ---
 
@@ -245,7 +254,8 @@ Contagem inclui feedbacks de sessões *anteriores* ainda pendentes — o process
 | Logar fricção só no final da execução | Memória degrada; perde correções pequenas e contexto |
 | Produtor mudando o próprio `status: pending-review` | Quebra a separação produtor/processador; permite auto-absolvição |
 | Processador editando código (não só docs) | Mistura papéis; gera mudanças sem PR review próprio |
-| Pular arquivo de feedback "porque a execução foi tranquila" | Quebra a homogeneidade; perde sinal de "ausência é sinal" |
+| Adiar criação do arquivo após primeira fricção ("vou criar no fim") | Perde a janela de captura crua; vira anotação tardia |
+| Criar arquivo sem fricção real só pra "marcar presença" | Polui o backlog; o processador perde sinal entre execuções "vazias" e execuções com 1 item |
 | Criar produtor novo direto, sem passar por draft + aprovação | Pula o gate humano; acumula produtores redundantes |
 | Backlog flat (sem subdir por produtor) | Dificulta filtragem; em escala vira ruído |
 | Frontmatter sem `status` | Quebra a fila — não dá pra distinguir pendente de processado |
@@ -272,7 +282,7 @@ Para auditar um projeto que diz adotar o feedback loop:
 
 ### Produtores
 
-- [ ] Cada produtor abre arquivo de feedback como §0 antes de qualquer outra ação (MUST)
+- [ ] Cada produtor cria arquivo **no momento do primeiro feedback registrado**, não antes (MUST)
 - [ ] Cada produtor registra fricção em tempo real, não no fim (MUST)
 - [ ] Cada produtor termina oferecendo invocar o processador (SHOULD)
 - [ ] Nenhum produtor edita o próprio `status` (MUST)
@@ -288,7 +298,7 @@ Para auditar um projeto que diz adotar o feedback loop:
 ### Anti-padrões ausentes
 
 - [ ] **NÃO** existe produtor que altera o próprio status
-- [ ] **NÃO** existe execução sem arquivo de feedback (até as "tranquilas")
+- [ ] **NÃO** existe fricção sem arquivo de feedback correspondente (ausência de arquivo = ausência de fricção; lazy)
 - [ ] **NÃO** existe processador que edita código
 
 ---
