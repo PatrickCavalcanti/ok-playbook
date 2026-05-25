@@ -2,7 +2,7 @@
 
 Este documento é lido pela LLM (Claude Code) ao executar a instalação do playbook num projeto que o consome. Pode também ser seguido manualmente.
 
-> **Para o agente que está lendo isto:** este é o protocolo de instalação. Siga §1 → §6 em ordem. Pergunte ao usuário antes de aplicar cada mudança *estrutural* (passos 3, 4, 5). O passo 6 (gerar `OKPLAYBOOK.md`) sempre roda e é o seu relatório final.
+> **Para o agente que está lendo isto:** este é o protocolo de instalação. Siga §1 → §8 em ordem. Pergunte ao usuário antes de aplicar cada mudança *estrutural* (passos 3, 4, 5, 7). O passo 6 (gerar `OKPLAYBOOK.md`) sempre roda e é o seu relatório final.
 
 ---
 
@@ -24,8 +24,11 @@ Se não for reinstalação, perguntar:
 
 Liste para o usuário o que está disponível neste playbook (lendo `packages/ok-playbook/`):
 
-- **Patterns** (`packages/ok-playbook/patterns/*.md`) — princípios agnósticos: code-design, worktree, feedback-loop, agent, subagent-dispatch.
-- **Agents** (`packages/ok-playbook/agents/*.md`) — protocolos agnósticos: docs-review, new-agent.
+- **Patterns project-level** (`packages/ok-playbook/patterns/*.md`):
+  - Princípios agnósticos: `code-design`, `worktree`, `feedback-loop`, `agent`, `subagent-dispatch`.
+  - Configuração do harness: `git`, `profiles`, `permissions`.
+- **Patterns user-level** (vão em `~/.claude/CLAUDE.md`): `memory`, `superpowers-workflow`.
+- **Agents** (`packages/ok-playbook/agents/*.md`) — protocolos agnósticos: `docs-review`, `new-agent`.
 - **Templates** (`packages/ok-playbook/templates/*.md`) — feedback, draft, insight, ARCHITECTURE.
 
 Pergunte:
@@ -69,6 +72,19 @@ Para cada path escolhido em §2, criar pasta vazia e copiar template canônico:
 └── _template.md                ← cópia de packages/ok-playbook/templates/insight.md
 ```
 
+**Se `profiles.md` foi aceito (§1):** copiar os 3 perfis canônicos pra `.claude/profiles/`:
+
+```
+.claude/profiles/
+├── dev-early.md       ← cópia da seção ### dev-early de patterns/profiles.md
+├── dev-stable.md      ← cópia da seção ### dev-stable
+└── review.md          ← cópia da seção review
+```
+
+Como `profiles.md` no playbook é um arquivo único com as 3 seções, **extrair cada seção pra um arquivo separado** mantendo o conteúdo. Atenção à hierarquia de headings: `profiles.md` usa `### dev-early` com sub-seções `#### Comportamento Geral`, etc. Ao materializar arquivos individuais, **promover** `####` → `##` (e descartar o `###` raiz, substituindo pelo `#` do título do arquivo). Se algum perfil já existe em `.claude/profiles/`, perguntar antes de sobrescrever.
+
+**Se `git.md` foi aceito (§1):** copiar pra `.claude/context/git-rules.md`. Se já existir, perguntar antes de sobrescrever.
+
 Se as pastas já existem, **não sobrescrever** templates existentes — pergunte ao usuário:
 
 > "Já existe `<backlog-root>/_template.md`. Sobrescrever com o template do playbook (pode ter divergido) ou manter o atual?"
@@ -78,6 +94,8 @@ Se as pastas já existem, **não sobrescrever** templates existentes — pergunt
 ## 4. Configurar `CLAUDE.md` do consumidor
 
 Ler `CLAUDE.md` do projeto consumidor (criar se não existir). Propor inserção do snippet de [`install/claude-md-snippet.md`](./install/claude-md-snippet.md), adaptado:
+
+Versão atual do snippet inclui: bloco "Antes de começar" (escolha de perfil), ponteiros pros 5 patterns novos, regras invariantes do playbook, e bloco "Registro de feedback de sessão" (gatilho lazy). Diff completo é visível no próprio `install/claude-md-snippet.md`.
 
 - Substituir placeholders pelos paths definidos em §2.
 - Posicionar **no topo** do CLAUDE.md (depois de outras instruções de boot, antes das específicas do projeto).
@@ -91,12 +109,14 @@ Mostrar diff antes de aplicar. Aguardar OK do usuário.
 
 Ler `.claude/settings.json` (ou `.claude/settings.local.json`) do consumidor. Mesclar permissões de [`install/permissions-snippet.json`](./install/permissions-snippet.json):
 
-- Permissões path-agnostic (já estão no snippet) entram direto.
-- Permissões `cd <worktree> && *` exigem path do projeto — pergunte se o usuário quer que você as gere agora (precisa de drive + path) ou pular pra configurar com a skill `update-config` depois.
+- O snippet atual já inclui items seguros universais (`Bash(git *)`, `Bash(node *)`, `Bash(npm *)`, leitura/edição local, worktree path-agnostic, Windows `mklink`, `WebSearch`). Entram direto.
+- Variantes path-specific de worktree (8 quotings com drive + nome do projeto) **não** estão no snippet. INSTALL pergunta:
+  - "Quer que eu gere agora as 8 variantes de worktree pra este projeto? Preciso de drive (`e`, `c`...) e nome do projeto (path absoluto)."
+  - Se sim, gerar inline e mesclar.
+  - Se não, registrar em `OKPLAYBOOK.md` como próximo passo manual com `update-config`.
+- Items domínio-específicos (`curl -s http://localhost:<porta>`, `docker exec *`, `DATABASE_URL=... node --test *`) ficam pro `update-config` aplicar conforme uso.
 
-Mostrar diff antes de aplicar.
-
-> **Importante:** não duplicar entradas existentes. Use a estrutura JSON real (parse + merge), não concatenação de texto.
+Mostrar diff antes de aplicar. Importante: não duplicar entradas — parse + merge, não concatenação.
 
 ---
 
@@ -112,13 +132,38 @@ Template em [`install/okplaybook-template.md`](./install/okplaybook-template.md)
 - Paths customizados (de §2).
 - Mudanças em `CLAUDE.md` (de §4).
 - Permissões adicionadas (de §5).
+- Quais perfis foram copiados pra `.claude/profiles/` (dev-early/stable/review).
+- Se `git-rules.md` foi instalado em `.claude/context/`.
+- Se setup user-level (§7) foi aplicado e em qual `~/.claude/CLAUDE.md`.
 - Próximos passos manuais sugeridos (ex: "configure permissões de worktree com `update-config`", "instale agentes de domínio").
 
 Se já existir `OKPLAYBOOK.md`, é update — preserve o histórico (mover para `OKPLAYBOOK.history/<timestamp>.md` antes de sobrescrever).
 
 ---
 
-## 7. Encerramento
+## 7. (Opcional) Setup user-level
+
+> **Atenção:** este passo modifica `~/.claude/CLAUDE.md` do usuário, que afeta TODOS os projetos do mesmo usuário no mesmo computador. Pedir confirmação explícita e mostrar diff antes de aplicar.
+
+Perguntar:
+
+> "Quer também aplicar os blocos user-level (memory + superpowers-workflow) em sua `~/.claude/CLAUDE.md` global? Isso afeta todos os seus projetos no mesmo computador."
+
+Se sim:
+
+1. Ler `~/.claude/CLAUDE.md` (criar se não existir).
+2. Detectar se já existe um bloco delimitado por `## ok-playbook (user-level)` — se sim, é update; substituir.
+3. Mostrar diff do conteúdo de [`install/global-claude-md-snippet.md`](./install/global-claude-md-snippet.md).
+4. Aplicar com OK do usuário.
+5. Registrar em `OKPLAYBOOK.md` (§6).
+
+Se não:
+
+- Registrar em `OKPLAYBOOK.md` que setup user-level foi pulado nesta instalação. Pode ser aplicado depois rodando este §7 isoladamente.
+
+---
+
+## 8. Encerramento
 
 Confirmar com o usuário:
 
