@@ -1,16 +1,37 @@
 {
-  "_comment": "Permissões path-agnostic do ok-playbook. Para mesclar em .claude/settings.json do projeto consumidor (§5 de INSTALL.md). As 8 variantes de 'cd <worktree> && *' NÃO estão aqui porque dependem do path do projeto (drive, project name) — gere-as com a skill update-config ou inline em CLAUDE.md.",
+  "_comment": "Permissões path-agnostic do ok-playbook. Para mesclar em .claude/settings.json do projeto consumidor (§5 de INSTALL.md). Worktree e additionalDirectories dependem do path do projeto — INSTALL pergunta em §5 ou aplica depois via skill update-config.",
 
   "permissions": {
     "allow": [
-      "PowerShell(New-Item *)",
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(npm *)",
+      "Bash(pnpm *)",
+      "Bash(npx *)",
+      "Bash(tsx *)",
+      "Bash(tsc *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(head *)",
+      "Bash(sed *)",
+      "Bash(wc *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(rm *)",
+      "Bash(touch *)",
+      "Bash(echo *)",
       "Bash(cmd //c \"mklink *\")",
       "Bash(cmd /c mklink *)",
       "Bash(git worktree *)",
       "Bash(git -C *.worktrees/* *)",
       "Bash(git -C *.worktrees\\* *)",
       "Bash(rm -rf *.worktrees/*)",
-      "PowerShell(Remove-Item *.worktrees*)"
+      "PowerShell(New-Item *)",
+      "PowerShell(Remove-Item *.worktrees*)",
+      "WebSearch"
     ]
   }
 }
