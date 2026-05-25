@@ -28,21 +28,26 @@ ok-playbook/
 │   ├── git.md                       # convenções de branches, commits, bloqueados
 │   ├── profiles.md                  # modos de operação canônicos (dev-early/stable/review)
 │   ├── permissions.md               # filosofia de .claude/settings.json
-│   ├── memory.md                    # USER-LEVEL: tipologia de memórias persistentes
-│   └── superpowers-workflow.md      # USER-LEVEL: fluxo + roteamento Opus/Sonnet
+│   ├── memory.md                    # tipologia de memórias persistentes do projeto
+│   └── superpowers-workflow.md      # fluxo superpowers + roteamento Opus/Sonnet
 ├── agents/                          # protocolos agnósticos de agentes
 │   ├── docs-review.md               # processador de feedback (consome feedback-loop)
-│   └── new-agent.md                 # materializador de novos agentes
+│   ├── new-agent.md                 # materializador de novos agentes
+│   ├── playbook-audit.md            # revalida o projeto contra a versão atual do playbook (manual)
+│   ├── permissions-review.md        # revisa prompts de permissão repetidos e propõe allowlist (lazy)
+│   └── playbook-contribute.md       # propõe mudança upstream pro playbook (direct/branch-pr/request)
 ├── templates/                       # templates de artefatos
 │   ├── feedback.md                  # template do registro de feedback
 │   ├── draft.md                     # template de rascunho de novo agente
 │   ├── insight.md                   # template de insight de evolução
+│   ├── upstream-proposal.md         # template de proposta upstream pro playbook
 │   └── ARCHITECTURE.md              # template para ARCHITECTURE.md de unidades
 └── install/                         # snippets e templates do instalador
     ├── claude-md-snippet.md         # bloco a inserir no CLAUDE.md do consumidor
-    ├── global-claude-md-snippet.md  # bloco a inserir em ~/.claude/CLAUDE.md (user-level)
-    ├── permissions-snippet.json     # permissões path-agnostic pra .claude/settings.json
-    └── okplaybook-template.md       # template do manifesto OKPLAYBOOK.md
+    ├── permissions-snippet.json     # permissões path-agnostic + bloco hooks pra .claude/settings.json
+    ├── okplaybook-template.md       # template do manifesto OKPLAYBOOK.md
+    └── hooks/                       # templates de PreToolUse hooks
+        └── auto-approve-worktree-bash.js  # hook canônico de auto-approve em worktree (substitui rules verbosas)
 ```
 
 ## Como começar — leitura recomendada
@@ -57,10 +62,16 @@ A ordem de dependência conceitual:
 6. [`patterns/git.md`](patterns/git.md) — convenções git compartilhadas.
 7. [`patterns/profiles.md`](patterns/profiles.md) — modo da sessão (escolhido no boot).
 8. [`patterns/permissions.md`](patterns/permissions.md) — filosofia das permissões `.claude/settings.json`.
-9. **User-level:** [`patterns/memory.md`](patterns/memory.md) — sistema de memórias persistente.
-10. **User-level:** [`patterns/superpowers-workflow.md`](patterns/superpowers-workflow.md) — workflow + roteamento de modelos.
+9. [`patterns/memory.md`](patterns/memory.md) — tipologia de memórias persistentes do projeto.
+10. [`patterns/superpowers-workflow.md`](patterns/superpowers-workflow.md) — workflow superpowers + roteamento de modelos.
 
-Os agentes em [`agents/`](agents/) (`docs-review`, `new-agent`) são implementações concretas dos papéis canônicos definidos em `feedback-loop.md` e `agent.md`.
+Os agentes em [`agents/`](agents/) são implementações concretas dos papéis canônicos definidos em `feedback-loop.md` e `agent.md`:
+
+- [`docs-review`](agents/docs-review.md) — processador padrão do backlog de feedback; **oferece** promoção upstream pro playbook quando processa insight genérico.
+- [`new-agent`](agents/new-agent.md) — materializa rascunhos aprovados em agentes oficiais.
+- [`playbook-audit`](agents/playbook-audit.md) — **revalidação manual** do projeto contra a versão atual do playbook (downstream: playbook → projeto).
+- [`permissions-review`](agents/permissions-review.md) — disparado **lazy** no encerramento da sessão quando há prompts de permissão repetidos; delega o escaneamento à skill built-in `fewer-permission-prompts` e aplica o filtro de generalização do [`patterns/permissions.md`](patterns/permissions.md).
+- [`playbook-contribute`](agents/playbook-contribute.md) — propõe mudança **upstream** pro playbook em três modos (`direct` / `branch-pr` / `request`) conforme registrado em `OKPLAYBOOK.md`. Invocação manual ou oferecida pelo `docs-review`.
 
 ## Como é consumido
 
@@ -96,11 +107,13 @@ Depois que o submódulo está presente, no projeto consumidor:
 
 `OKPLAYBOOK.md` é o **registro de auditoria** — qual versão foi instalada, quais componentes estão ativos, quais paths foram customizados, quais próximos passos manuais ficaram pendentes.
 
-Para atualizar (upgrade): rodar `git submodule update --remote packages/ok-playbook` e pedir "atualiza o ok-playbook" no Claude — ele lê INSTALL.md de novo, detecta `OKPLAYBOOK.md` existente, e roda o fluxo de upgrade preservando histórico.
+Para atualizar (upgrade): rodar `git submodule update --remote packages/ok-playbook` e pedir "**revalida o ok-playbook**" — ele invoca o agente [`playbook-audit`](agents/playbook-audit.md), que detecta drift item a item entre o canon atual do submódulo e a cópia local do projeto, e deixa você decidir o que atualizar, manter ou marcar como customização intencional. Histórico fica em `OKPLAYBOOK.history/`.
 
 ## Como contribuir
 
-Edições normalmente acontecem **dentro de um monorepo consumidor** (é onde está o contexto da mudança). Fluxo:
+Edições normalmente acontecem **dentro de um monorepo consumidor** (é onde está o contexto da mudança). O **modo de contribuição** está registrado em `OKPLAYBOOK.md` do consumidor (campo "Modo de contribuição upstream") e determina como o fluxo opera. O agente [`playbook-contribute`](agents/playbook-contribute.md) automatiza os três:
+
+### Modo `direct` — mantenedor com push na main
 
 ```bash
 cd packages/ok-playbook
@@ -115,18 +128,41 @@ git add packages/ok-playbook
 git commit -m "chore: bump ok-playbook"
 ```
 
-⚠️ **Pegadinha clássica:** se você commitar a referência do submódulo no super-repo **sem ter pushado** o commit do submódulo, outros consumidores não vão conseguir clonar/buildar. Sempre push o submódulo primeiro.
+### Modo `branch-pr` — git access, sem push na main (default pra times)
+
+```bash
+cd packages/ok-playbook
+git checkout -b proposal/<slug>
+# editar arquivos
+git add .
+git commit -m "..."
+git push -u origin proposal/<slug>
+gh pr create --title "..." --body "<inclui insight de origem completo + diff + como validar>"
+```
+
+O PR body **precisa** embutir o insight de origem completo (mantenedor não tem acesso ao repo consumidor). Não bumpar a referência do submódulo no super-repo até o merge.
+
+### Modo `request` — sem git access ao playbook
+
+Nada é commitado no submódulo. O agente gera um artefato em `<insights-root>/upstream-proposals/YYYY-MM-DD-<slug>.md` a partir de [`templates/upstream-proposal.md`](templates/upstream-proposal.md) com diff + steps executáveis pelo mantenedor + insight de origem. Consumidor envia pelo canal combinado. Quando o mantenedor confirmar merge: `git submodule update --remote packages/ok-playbook` e `playbook-audit`.
+
+### Rastro local em todos os modos
+
+Toda proposta upstream — independente do modo — gera arquivo de rastro em `<insights-root>/upstream-proposals/`. Permite auditoria de "o que esse projeto promoveu pro playbook ao longo do tempo".
+
+⚠️ **Pegadinha clássica** (apenas `direct`): se você commitar a referência do submódulo no super-repo **sem ter pushado** o commit do submódulo, outros consumidores não vão conseguir clonar/buildar. Sempre push o submódulo primeiro.
 
 ## Status atual
 
 | Componente | Estado |
 |---|---|
 | Patterns originais (code-design, worktree, feedback-loop, agent, subagent-dispatch) | ✅ migrados |
-| Patterns config harness (git, profiles, permissions) | ✅ extraídos |
-| Patterns user-level (memory, superpowers-workflow) | ✅ extraídos |
-| Agents (docs-review, new-agent) | ✅ migrados — alinhados com gatilho lazy do feedback-loop |
-| Templates (4) | ✅ migrados |
-| `INSTALL.md` + snippets (project + user-level) | ✅ esqueleto pronto — falta validar contra instalação real |
+| Patterns config harness (git, profiles, permissions) | ✅ extraídos; permissions ganhou seção sobre PreToolUse hooks como escape hatch |
+| Hook canônico de worktree (`install/hooks/auto-approve-worktree-bash.js`) | ✅ — substitui ~100 rules verbosas por 1 script; validado em uso real |
+| Patterns adicionais project-level (memory, superpowers-workflow) | ✅ extraídos |
+| Agents (docs-review, new-agent, playbook-audit, permissions-review, playbook-contribute) | ✅ — feedback-loop lazy; playbook-audit manual; permissions-review lazy no encerramento; playbook-contribute manual com 3 modos |
+| Templates (5: feedback, draft, insight, ARCHITECTURE, upstream-proposal) | ✅ migrados |
+| `INSTALL.md` + snippets project-level | ✅ esqueleto pronto — falta validar contra instalação real |
 | Agentes Igris-específicos (power, module, session-review) | ⏳ não migrados — domínio muito Igris; aguardam extração de versão agnóstica |
 
 ### Próximos passos previstos

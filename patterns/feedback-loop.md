@@ -321,3 +321,15 @@ Mudanças aplicadas via PR + revisão. Sem mudança silenciosa.
 - [`agent.md`](./agent.md) consome este loop como base. Todo agente é um produtor.
 - [`code-design.md`](./code-design.md) §12 mostra outro produtor (verificador de design) usando o mesmo loop.
 - O loop *não* é exclusivo de agentes — qualquer execução repetitiva pode incorporar.
+
+### Categorias de feedback conhecidas
+
+Subpastas canônicas em `<backlog-root>/` por tipo de produtor:
+
+| Categoria | Producer típico | O que registra |
+|---|---|---|
+| `session/` | a própria sessão (CLAUDE.md gatilho) | Fricções gerais em docs, padrões, regras de processo |
+| `<agente-de-dominio>/` | agente específico do projeto (ex: `power/`, `module/`) | Fricções na execução desse agente |
+| `permissions/` | `permissions-review` (agente do playbook) | Prompts de permissão repetidos que viraram allowlist + sugestões pra `permissions.md` ou pro snippet |
+
+Cada projeto adiciona categorias conforme seus produtores. A regra invariante é a mesma: um arquivo por execução, frontmatter com `status`, lazy.

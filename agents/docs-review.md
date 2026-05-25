@@ -104,6 +104,26 @@ Após processar todos os feedbacks, verificar se há padrões recorrentes que ju
 - Mesma dificuldade apareceu em 2+ feedbacks → criar `<insights-root>/YYYY-MM-DD-<tema>.md`
 - Lacuna arquitetural identificada → criar insight com `type: architecture`
 
+### 7. Oferta de promoção upstream pro ok-playbook
+
+Após criar (ou atualizar) insights em §6, verificar se algum tem sinal de "isso é genérico, vale como canon do playbook" — não promover automaticamente, **oferecer** ao usuário.
+
+Sinais que justificam a oferta:
+
+- Insight descreve regra/pattern que **não é Igris-específico** nem do domínio do projeto (ex: "agente X deveria fazer Y" onde X é um agente genérico definido no playbook).
+- Feedback corrigiu protocolo de **agente que veio do playbook** (`docs-review`, `new-agent`, `playbook-audit`, `permissions-review`) — quase certo que sobe.
+- Permissões repetidamente faltando que já existem como pattern genérico no [`packages/ok-playbook/patterns/permissions.md`](../patterns/permissions.md) (caso comum).
+
+Quando detectar, perguntar ao usuário:
+
+> "O insight `<arquivo>` parece genérico — talvez valha promover pro `ok-playbook`. Quer que eu invoque o `playbook-contribute` agora pra materializar a proposta no modo registrado em `OKPLAYBOOK.md`?"
+
+- Se **sim** → invocar `playbook-contribute` passando o path do insight.
+- Se **não** → marcar no insight uma linha `## Promoção upstream` com `decision: <data> — não promover (motivo)`.
+- Se **mais tarde** → mesma marcação com `decision: adiar`.
+
+**Não promover sem oferta explícita.** A regra é "promoção manual baseada em sinal documentado" — o agente identifica o sinal, o usuário decide.
+
 ---
 
 ## Escopo do docs-review
@@ -118,6 +138,7 @@ Após processar todos os feedbacks, verificar se há padrões recorrentes que ju
 
 **Registra, mas não implementa:**
 - Insights que exigem mudança arquitetural → cria `<insights-root>/` com o problema descrito
+- Promoção pro playbook → **oferece** invocar `playbook-contribute`, mas não materializa sozinho
 
 ---
 

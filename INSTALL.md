@@ -2,7 +2,9 @@
 
 Este documento é lido pela LLM (Claude Code) ao executar a instalação do playbook num projeto que o consome. Pode também ser seguido manualmente.
 
-> **Para o agente que está lendo isto:** este é o protocolo de instalação. Siga §1 → §8 em ordem. Pergunte ao usuário antes de aplicar cada mudança *estrutural* (passos 3, 4, 5, 7). O passo 6 (gerar `OKPLAYBOOK.md`) sempre roda e é o seu relatório final.
+> **Para o agente que está lendo isto:** este é o protocolo de instalação. Siga §1 → §7 em ordem. Pergunte ao usuário antes de aplicar cada mudança *estrutural* (passos 3, 4, 5). O passo 6 (gerar `OKPLAYBOOK.md`) sempre roda e é o seu relatório final.
+>
+> **Importante:** este playbook é estritamente **project-level**. Nenhum passo modifica `~/.claude/CLAUDE.md`, `~/.claude/settings.json` ou qualquer arquivo fora do projeto consumidor. Se o usuário pedir setup global, recuse e explique que decisões da OK valem por projeto, não por usuário.
 
 ---
 
@@ -24,10 +26,10 @@ Se não for reinstalação, perguntar:
 
 Liste para o usuário o que está disponível neste playbook (lendo `packages/ok-playbook/`):
 
-- **Patterns project-level** (`packages/ok-playbook/patterns/*.md`):
+- **Patterns** (`packages/ok-playbook/patterns/*.md`) — todos project-level:
   - Princípios agnósticos: `code-design`, `worktree`, `feedback-loop`, `agent`, `subagent-dispatch`.
   - Configuração do harness: `git`, `profiles`, `permissions`.
-- **Patterns user-level** (vão em `~/.claude/CLAUDE.md`): `memory`, `superpowers-workflow`.
+  - Tipologia/workflow: `memory` (tipologia de memórias do projeto), `superpowers-workflow` (roteamento Opus/Sonnet e cadência de reviews).
 - **Agents** (`packages/ok-playbook/agents/*.md`) — protocolos agnósticos: `docs-review`, `new-agent`.
 - **Templates** (`packages/ok-playbook/templates/*.md`) — feedback, draft, insight, ARCHITECTURE.
 
@@ -54,6 +56,18 @@ O playbook usa placeholders `<backlog-root>`, `<drafts-root>`, `<insights-root>`
 > "Vou usar estes paths como default: `docs/agent-feedback/`, `docs/_drafts/`, `docs/insights/`, `dev-prompts/project-architecture/`. OK ou quer ajustar?"
 
 Anote a resposta — ela vai entrar no `OKPLAYBOOK.md` (§6) e ser usada para criar os arquivos vazios em §3.
+
+### 2.1 Modo de contribuição upstream
+
+Perguntar ao usuário **agora**, durante a instalação — assim o `playbook-contribute` já sabe operar quando for invocado depois:
+
+> "Como este projeto contribui de volta pro `ok-playbook` quando descobre algo genérico que vale virar canon?
+> 1. **`direct`** — eu (ou meu time) tenho push direto na main do playbook (mantenedor / projetos pessoais).
+> 2. **`branch-pr`** — temos git access ao repo do playbook, mas mudanças vão por branch + merge request (default pra times).
+> 3. **`request`** — não temos git access; mudanças viram artefato pra mantenedor aplicar (consumidor externo).
+> 4. **`unknown`** — pular agora, pergunto na primeira vez que `playbook-contribute` for invocado."
+
+Anotar a resposta — vai pro campo "Modo de contribuição upstream" do `OKPLAYBOOK.md` (§6). Detalhes operacionais de cada modo em [`agents/playbook-contribute.md`](./agents/playbook-contribute.md).
 
 ---
 
@@ -107,18 +121,38 @@ Mostrar diff antes de aplicar. Aguardar OK do usuário.
 
 ---
 
-## 5. Configurar `.claude/settings.json` (permissões)
+## 5. Configurar `.claude/settings.json` (permissões + hook)
+
+Esta etapa tem **duas partes**: as permissões path-agnostic em `permissions.allow` e o **PreToolUse hook** que cobre comandos compound em worktree (substitui o approach obsoleto de 8 regras `cd <path> && *` por variante de quoting). Detalhes do rationale em [`patterns/worktree.md §6`](./patterns/worktree.md) e [`patterns/permissions.md §Quando rules não bastam`](./patterns/permissions.md).
+
+### 5.1 Mesclar permissões
 
 Ler `.claude/settings.json` (ou `.claude/settings.local.json`) do consumidor. Mesclar permissões de [`install/permissions-snippet.json`](./install/permissions-snippet.json):
 
-- O snippet atual já inclui items seguros universais (`Bash(git *)`, `Bash(node *)`, `Bash(npm *)`, leitura/edição local, worktree path-agnostic, Windows `mklink`, `WebSearch`). Entram direto.
-- Variantes path-specific de worktree (8 quotings com drive + nome do projeto) **não** estão no snippet. INSTALL pergunta:
-  - "Quer que eu gere agora as 8 variantes de worktree pra este projeto? Preciso de drive (`e`, `c`...) e nome do projeto (path absoluto)."
-  - Se sim, gerar inline e mesclar.
-  - Se não, registrar em `OKPLAYBOOK.md` como próximo passo manual com `update-config`.
-- Items domínio-específicos (`curl -s http://localhost:<porta>`, `docker exec *`, `DATABASE_URL=... node --test *`) ficam pro `update-config` aplicar conforme uso.
+- O snippet já inclui items seguros universais (`Bash(git *)`, `Bash(node *)`, `Bash(npm *)`, leitura/edição local, worktree path-agnostic `git worktree *` + `git -C *.worktrees/* *`, Windows `mklink`, `WebSearch`). Entram direto.
+- Items domínio-específicos (`curl -s http://localhost:<porta>`, `docker exec *`, `DATABASE_URL=... node --test *`) ficam pro [`permissions-review`](./agents/permissions-review.md) aplicar conforme uso.
 
 Mostrar diff antes de aplicar. Importante: não duplicar entradas — parse + merge, não concatenação.
+
+### 5.2 Instalar o hook de worktree
+
+Pra worktree não pedir prompt em comandos comuns (`cd <wt> && git status`, etc.):
+
+1. **Perguntar ao usuário** o `<PROJECT_PATH>` (path do projeto a partir do drive, lowercase, forward-slashes):
+   > "Pra parametrizar o hook de worktree, preciso do path do seu projeto a partir do drive, em lowercase e forward-slash. Ex: se o projeto está em `e:/Projetos/Igris`, o valor é `projetos/igris`. Qual é o seu?"
+2. **Copiar o template** de [`install/hooks/auto-approve-worktree-bash.js`](./install/hooks/auto-approve-worktree-bash.js) para `.claude/hooks/auto-approve-worktree-bash.js`, **substituindo `<PROJECT_PATH>`** pelo valor que o usuário deu.
+3. **Mesclar o bloco `hooks`** do snippet em [`install/permissions-snippet.json`](./install/permissions-snippet.json) no `.claude/settings.json` do consumidor (chave top-level `hooks`, append/merge em `PreToolUse[]`).
+4. **Hook entra em vigor sem reload window** (descoberta empírica). Rules em `permissions.allow` precisam de reload — avise o usuário se houver dúvida.
+
+Se o usuário **NÃO usa worktrees** neste projeto, pular 5.2 inteiro e registrar em `OKPLAYBOOK.md` como "hook de worktree não instalado".
+
+### 5.3 Verificar
+
+Pedir ao usuário pra rodar um comando de teste numa worktree existente (se houver) — `cd "<worktree-path>" && git status`. Deve passar **sem prompt**. Se prompted, conferir:
+
+- `.claude/hooks/auto-approve-worktree-bash.js` existe e o `<PROJECT_PATH>` foi substituído corretamente?
+- Bloco `hooks.PreToolUse` em `.claude/settings.json` aponta pro path correto?
+- Node está em PATH?
 
 ---
 
@@ -136,40 +170,22 @@ Template em [`install/okplaybook-template.md`](./install/okplaybook-template.md)
 - Permissões adicionadas (de §5).
 - Quais perfis foram copiados pra `.claude/profiles/` (dev-early/stable/review).
 - Se `git-rules.md` foi instalado em `.claude/context/`.
-- Se setup user-level (§7) foi aplicado e em qual `~/.claude/CLAUDE.md`.
+- **Modo de contribuição upstream** (de §2.1).
 - Próximos passos manuais sugeridos (ex: "configure permissões de worktree com `update-config`", "instale agentes de domínio").
 
 Se já existir `OKPLAYBOOK.md`, é update — preserve o histórico (mover para `OKPLAYBOOK.history/<timestamp>.md` antes de sobrescrever).
 
 ---
 
-## 7. (Opcional) Setup user-level
-
-> **Atenção:** este passo modifica `~/.claude/CLAUDE.md` do usuário, que afeta TODOS os projetos do mesmo usuário no mesmo computador. Pedir confirmação explícita e mostrar diff antes de aplicar.
-
-Perguntar:
-
-> "Quer também aplicar os blocos user-level (memory + superpowers-workflow) em sua `~/.claude/CLAUDE.md` global? Isso afeta todos os seus projetos no mesmo computador."
-
-Se sim:
-
-1. Ler `~/.claude/CLAUDE.md` (criar se não existir).
-2. Detectar se já existe um bloco delimitado por `## ok-playbook (user-level)` — se sim, é update; substituir.
-3. Mostrar diff do conteúdo de [`install/global-claude-md-snippet.md`](./install/global-claude-md-snippet.md).
-4. Aplicar com OK do usuário.
-5. Registrar em `OKPLAYBOOK.md` (§6).
-
-Se não:
-
-- Registrar em `OKPLAYBOOK.md` que setup user-level foi pulado nesta instalação. Pode ser aplicado depois rodando este §7 isoladamente.
-
----
-
-## 8. Encerramento
+## 7. Encerramento
 
 Confirmar com o usuário:
 
-> "ok-playbook instalado. Componentes ativos: [lista]. Próximos passos manuais documentados em `OKPLAYBOOK.md`. Quer que eu também copie as skills dos agentes (`docs-review`, `new-agent`) para `.claude/skills/`?"
+> "ok-playbook instalado. Componentes ativos: [lista]. Próximos passos manuais documentados em `OKPLAYBOOK.md`. Quer que eu também copie as skills dos agentes (`docs-review`, `new-agent`, `playbook-audit`, `permissions-review`, `playbook-contribute`) para `.claude/skills/`?"
+
+Lembrar ao usuário sobre o **fluxo de upgrade**:
+
+> "Quando o ok-playbook receber atualizações, rode `git submodule update --remote packages/ok-playbook` e depois peça **'revalida o ok-playbook'** — o agente `playbook-audit` mostra o drift item a item e você decide o que atualizar. Esse é o caminho oficial de upgrade; não é mais necessário rodar este INSTALL.md de novo."
 
 Se sim, para cada agente em `packages/ok-playbook/agents/`, criar `.claude/skills/<nome>/SKILL.md` apontando para o protocolo do playbook:
 

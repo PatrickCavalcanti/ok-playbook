@@ -132,91 +132,102 @@ Roda `npm install` (ou equivalente) na worktree como se fosse um clone novo. Fun
 
 ---
 
-## 6. Permissões do Claude Code
+## 6. Permissões do Claude Code em worktrees
 
 **Princípio mestre:** liberdade total dentro de `.worktrees/`, granular fora.
 
 A worktree é descartável. Se um agente faz besteira lá dentro, custa um `git worktree remove`. Já fora dela, especialmente no checkout principal, cada ação destrutiva precisa de aprovação explícita.
 
-### 6.1 Por que precisa configurar
+A implementação canônica desse princípio mudou. **Versões anteriores deste doc recomendavam 8 regras compound (`Bash(cd <path> && *)`) cobrindo variantes de quoting.** Essa abordagem é obsoleta — não funciona. A nova recomendação é um **PreToolUse hook**.
 
-O matcher de permissões do Claude Code é **literal** — não normaliza paths. No Windows, `cd e:/proj` e `cd "E:\proj"` são entradas diferentes. Sem entradas pra cada variação, cada agente que entra na worktree dispara um prompt de permissão e quebra o fluxo.
+### 6.1 Por que rules não bastam (matcher behavior)
 
-Quando o usuário aprova via UI "always allow", a entrada salva é hiper-específica (path exato, sintaxe exata). A próxima variação pede aprovação de novo. **A solução é configurar antecipadamente os padrões generalizados.**
+O matcher de permissões do Claude Code tem duas restrições que tornam `cd <path> && <cmd>` ingovernável por rules:
 
-### 6.2 Snippets pra `.claude/settings.json`
+1. **Compound `&&` é fatiado em subcomandos.** A doc oficial ([permissions](https://code.claude.com/docs/en/permissions)) diz "rule must match each subcommand independently". Mas empiricamente, ter `Bash(cd *)` e `Bash(git *)` separados **não** libera `cd <path> && git status` — `cd` é tratado como "context-changing" (igual runners tipo `devbox run`) e exige regra combinada explícita.
+2. **Wildcards no inner segment não expandem.** Patterns tipo `Bash(cd <path> && *)` com `*` no inner não casam comandos reais. Só `Bash(cd <path> && <cmd> *)` literal no head do inner casa — gerando explosão (N variantes de path × M comandos = 100+ rules).
+3. **Edições em `.claude/settings.json` não recarregam mid-sessão** (apenas o diálogo "Yes don't ask again" atualiza memória + disco). Toda mudança em rules exige reload window pra entrar em vigor.
 
-Os snippets abaixo usam placeholders: substitua `<drive>` pela letra do drive (ex: `e`) e `<project>` pelo path do projeto a partir do drive (ex: `Projetos/MyApp`). Em git-bash o path vira `/<drive>/<project>`, sem dois-pontos.
+Detalhes e referências em [`./permissions.md §Quando rules não bastam`](./permissions.md).
 
-#### Allowlist core — `cd <worktree> && *`
+### 6.2 Solução canônica: PreToolUse hook
 
-8 variantes cobrindo as combinações de notação que aparecem na prática (forward/backslash, drive minúsculo/maiúsculo, com/sem aspas, com/sem `cd /d` do cmd.exe):
+Um único script Node.js intercepta toda call do Bash tool, faz regex contra o `command`, e retorna `allow` para `cd <worktree-do-projeto> && <comando-whitelisted>`. Cobre todas as variantes de quoting numa regex; cobre chains múltiplos (`&& A && B`); whitelist é um Set no JS, fácil de editar.
+
+**Template canônico:** [`../install/hooks/auto-approve-worktree-bash.js`](../install/hooks/auto-approve-worktree-bash.js). Tem um placeholder `<PROJECT_PATH>` substituído na instalação pelo path real do projeto (ex: `projetos/igris`).
+
+**Whitelist default** (21 comandos cobrindo dev típico):
+
+`git, node, npm, pnpm, npx, tsx, tsc, ls, cat, find, grep, head, sed, wc, pwd, mkdir, cp, mv, rm, touch, echo`
+
+**Configuração em `.claude/settings.json`** (relativa a `${CLAUDE_PROJECT_DIR}`):
 
 ```json
 {
-  "permissions": {
-    "allow": [
-      "Bash(cd /<drive>/<project>/.worktrees/* && *)",
-      "Bash(cd <drive>:/<project>/.worktrees/* && *)",
-      "Bash(cd \"<drive>:/<project>/.worktrees/*\" && *)",
-      "Bash(cd \"<DRIVE>:/<project>/.worktrees/*\" && *)",
-      "Bash(cd \"<drive>:\\<project>\\.worktrees\\*\" && *)",
-      "Bash(cd \"<DRIVE>:\\<project>\\.worktrees\\*\" && *)",
-      "Bash(cd /d \"<drive>:\\<project>\\.worktrees\\*\" && *)",
-      "Bash(cd /d \"<DRIVE>:\\<project>\\.worktrees\\*\" && *)"
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/auto-approve-worktree-bash.js"
+          }
+        ]
+      }
     ]
   }
 }
 ```
 
-#### Operações de criação (path-agnostic, seguras)
+**Bonus comprovado empiricamente:** hooks recarregam sem precisar de reload window (diferente de rules). Editar o whitelist do `.js` ou trocar a regex entra em vigor imediatamente.
 
-Criar diretório e symlink são reversíveis — o que protege escopo de conteúdo é `Write`/`Edit`, que continuam confinados à cwd autorizada:
+### 6.3 O que NÃO vai pro hook (continua como rules normais)
 
-```json
-"PowerShell(New-Item *)",
-"Bash(cmd //c \"mklink *\")",
-"Bash(cmd /c mklink *)"
-```
-
-#### Operações de git em worktrees (recomendadas)
-
-`git worktree` é meta-comando seguro (list, add, remove, prune). `git -C` é direcionado a path — quando o path é dentro de `.worktrees/`, é equivalente a estar dentro da worktree:
+Operações que **não** começam com `cd <worktree>` ou não fazem chain, continuam dependendo de rules em `permissions.allow`:
 
 ```json
-"Bash(git worktree *)",
-"Bash(git -C *.worktrees/* *)",
-"Bash(git -C *.worktrees\\* *)"
+{
+  "permissions": {
+    "allow": [
+      "Bash(git worktree *)",
+      "Bash(git -C *.worktrees/* *)",
+      "Bash(git -C *.worktrees\\* *)",
+      "Bash(rm -rf *.worktrees/*)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Remove-Item *.worktrees*)",
+      "Bash(cmd //c \"mklink *\")",
+      "Bash(cmd /c mklink *)"
+    ]
+  }
+}
 ```
 
-#### Cleanup de worktree
+| Categoria | Por que rule e não hook |
+|---|---|
+| `git worktree add/list/remove/prune` | Não tem `cd` antes — comando direto |
+| `git -C <path>` | Usa `-C` em vez de `cd && git` — fora do padrão do hook |
+| `rm -rf .worktrees/*` (cleanup) | Não tem `cd` antes |
+| `mklink` / `New-Item` (junction setup) | Não tem `cd` antes |
 
-Remover diretório de worktree é seguro contanto que esteja escopado pra `.worktrees/`:
+### 6.4 O que NÃO generalizar em hook nem rule
 
-```json
-"Bash(rm -rf *.worktrees/*)",
-"PowerShell(Remove-Item *.worktrees*)"
-```
+Resista à tentação de adicionar ao whitelist do hook (ou rule global):
 
-### 6.3 O que NÃO generalizar
+- `curl https://*` (rede pública) — exfiltration risk.
+- `npm install -g`, `pip install --user` — install global escapa o escopo da worktree.
+- `git push *` — push afeta remote, escopo errado pra "liberdade dentro da worktree".
+- `git reset --hard *` — afeta history, mesmo dentro da worktree pode destruir trabalho não-pusheado.
 
-Resista à tentação de adicionar:
+Esses ficam pontuais — aprovados via diálogo quando necessário, ou rules específicas com path muito constrained (`Bash(curl -s http://localhost:*)`).
 
-- `Bash(npm *)` global — `npm install` em path errado pode tocar package-lock do main.
-- `Bash(rm -rf *)` global — risco enorme, ganho marginal.
-- `Bash(git push *)` — push afeta remote, escopo errado pra "liberdade dentro da worktree".
-- `Bash(git reset --hard *)` — afeta history, mesmo dentro do worktree pode destruir trabalho não-pusheado.
+### 6.5 Auditoria de permissões existentes
 
-Essas continuam pontuais.
+Antes de adicionar/editar, rodar:
 
-### 6.4 Auditoria de permissões existentes
-
-Antes de adicionar, rodar `update-config` skill em modo "verify":
-
-1. Lista permissões atuais em `.claude/settings.json`.
-2. Compara com os snippets §6.2.
-3. Reporta o que falta.
-4. **Pergunta** ao usuário antes de aplicar — não modifica `.claude/settings.json` sem confirmação.
+- **Em projeto novo (sem hook ainda):** seguir [`../INSTALL.md`](../INSTALL.md) §5 (instalação de hook + rules complementares).
+- **Em projeto existente (migrando das 8 variantes obsoletas):** rodar [`../agents/playbook-audit.md`](../agents/playbook-audit.md) — detecta drift entre cópia local e canon, oferece adotar o hook approach.
+- **Pra avaliar prompts recorrentes em uso:** rodar [`../agents/permissions-review.md`](../agents/permissions-review.md) — propõe atualizações no whitelist do hook ou rules complementares.
 
 ---
 
@@ -278,9 +289,13 @@ git worktree prune
 |---|---|
 | Criar worktree sozinho (sem usuário pedir) | Worktree tem custo de setup; só vale quando o usuário decidiu que vale |
 | Criar worktree durante brainstorming/spec/plano | Esses artefatos são docs — não precisam de isolamento |
+| Adicionar 8 variantes `Bash(cd <path> && *)` em settings.json | Não funcionam (matcher não expande `*` no inner); usar hook em vez disso |
+| Adicionar `Bash(cd <path> && <cmd> *)` por comando × 8 variantes | Funcionaria, mas vira 100+ rules; usar hook é dramaticamente mais limpo |
+| Editar `.claude/settings.json` esperando que recarregue mid-sessão | Só hooks recarregam ao vivo; rules exigem reload window |
+| Adicionar comando alto-risco ao whitelist do hook (`curl`, `npm install -g`, `git push`) | Hook auto-aprova qualquer chain com esses heads dentro de worktree — vetor de exploração se subagente for comprometido |
+| Despachar subagente esperando que `isolation: worktree` opere numa worktree nomeada existente | Esse mode cria worktree TEMPORÁRIA descartável em `.claude/worktrees/agent-<hash>`; bom só pra spike isolado, não pra trabalho continuado |
 | Rebase de `main` de dentro de uma worktree | Mexe na branch base de todas as worktrees ao mesmo tempo |
 | `rm -rf <worktree>` manual sem `git worktree remove` | Deixa referência dangling em `.git/worktrees/` |
-| Generalizar `Bash(rm -rf *)` ou `Bash(git push *)` global pra reduzir prompt | Ganho marginal, risco enorme — quebra o princípio "granular fora de `.worktrees/`" |
 | `mklink` apontando pra path sensível (`.ssh/`, `~/.config/` de outros) | Junction segue o link; expõe conteúdo arbitrário ao subagente |
 | Commit em multi-repo confiando no cwd | Use `git -C <repo>` — cwd drifta em sessões longas |
 | Instalar deps no subagente (em vez do controller) | Subagentes não devem mexer em deps; controller mantém install/junction |
@@ -296,21 +311,22 @@ Pra o skill `update-config` (ou auditoria manual) rodar contra um projeto:
 - [ ] `.gitignore` cobre `.worktrees/`
 - [ ] Existe `.claude/settings.json` (ou `.claude/settings.local.json` se preferência local)
 
-### Permissões mínimas (§6.2)
+### Hook + permissões mínimas (§6.2, §6.3)
 
-- [ ] 8 entradas de `cd <worktree>` em todas as variantes de notação
-- [ ] `PowerShell(New-Item *)` ou equivalente POSIX
-- [ ] `Bash(cmd //c "mklink *")` e `Bash(cmd /c mklink *)` (Windows) ou `Bash(ln -s *)` (POSIX)
-- [ ] `Bash(git worktree *)`
-- [ ] `Bash(git -C *.worktrees/* *)` e variante backslash (Windows)
+- [ ] Existe `.claude/hooks/auto-approve-worktree-bash.js` com `<PROJECT_PATH>` substituído pelo path real (lowercase, slashes)
+- [ ] `.claude/settings.json` tem bloco `hooks.PreToolUse[].matcher: "Bash"` apontando pro script
+- [ ] **NÃO** existe mais o bloco antigo de 8 variantes `Bash(cd <path> && *)` em `permissions.allow` (resíduo obsoleto — remover)
+- [ ] Rules complementares presentes em `permissions.allow`:
+  - [ ] `Bash(git worktree *)`
+  - [ ] `Bash(git -C *.worktrees/* *)` e variante backslash (Windows)
+  - [ ] `Bash(rm -rf *.worktrees/*)` + `PowerShell(Remove-Item *.worktrees*)` pra cleanup
+  - [ ] `Bash(cmd //c "mklink *")` e `Bash(cmd /c mklink *)` (Windows) ou `Bash(ln -s *)` (POSIX)
+  - [ ] `PowerShell(New-Item *)` (Windows)
 
-### Permissões recomendadas (§6.2)
+### Anti-padrões a confirmar ausentes (§6.4)
 
-- [ ] `Bash(rm -rf *.worktrees/*)` + `PowerShell(Remove-Item *.worktrees*)` pra cleanup
-
-### Anti-padrões a confirmar ausentes (§6.3)
-
-- [ ] **NÃO** existe `Bash(npm *)` global
+- [ ] **NÃO** existe `curl https://*` no whitelist do hook
+- [ ] **NÃO** existe `Bash(npm install -g *)` global
 - [ ] **NÃO** existe `Bash(rm -rf *)` global (sem prefixo `.worktrees/`)
 - [ ] **NÃO** existe `Bash(git push *)` global
 - [ ] **NÃO** existe `Bash(git reset --hard *)` global

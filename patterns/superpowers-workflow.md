@@ -1,8 +1,8 @@
 # Superpowers — Workflow e Roteamento de Modelos
 
-> **Escopo:** user-level. Vai em `~/.claude/CLAUDE.md` via `install/global-claude-md-snippet.md` (resumo). Este doc é a referência detalhada.
+> **Escopo:** project-level. O resumo entra no `CLAUDE.md` do projeto via [`install/claude-md-snippet.md`](../install/claude-md-snippet.md). Este doc é a referência detalhada.
 
-Política da OK para uso dos skills `superpowers-marketplace` (plugin do Claude Code) no fluxo brainstorming → writing-plans → subagent-driven-development. Não substitui a documentação interna dos skills — define como integrá-los, qual modelo usar em cada papel, e quando rodar testes/reviews.
+Política da OK para uso dos skills `superpowers-marketplace` (plugin do Claude Code) no fluxo brainstorming → writing-plans → subagent-driven-development. Não substitui a documentação interna dos skills — define como integrá-los, qual modelo usar em cada papel, e quando rodar testes/reviews. Cada projeto consumidor pode ajustar a política, mas o default da OK é o descrito aqui.
 
 ---
 

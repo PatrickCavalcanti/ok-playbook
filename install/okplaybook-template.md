@@ -28,11 +28,19 @@ Marque o que foi instalado nesta instância:
 - [ ] `feedback-loop.md`
 - [ ] `agent.md`
 - [ ] `subagent-dispatch.md`
+- [ ] `git.md`
+- [ ] `profiles.md`
+- [ ] `permissions.md`
+- [ ] `memory.md` (tipologia de memórias do projeto, refletida no `CLAUDE.md`)
+- [ ] `superpowers-workflow.md` (roteamento Opus/Sonnet, cadência por fase, refletido no `CLAUDE.md`)
 
 ### Agents
 
 - [ ] `docs-review` (skill em `.claude/skills/docs-review/`)
 - [ ] `new-agent` (skill em `.claude/skills/new-agent/`)
+- [ ] `playbook-audit` (skill em `.claude/skills/playbook-audit/`)
+- [ ] `permissions-review` (skill em `.claude/skills/permissions-review/` — depende da skill built-in `fewer-permission-prompts`)
+- [ ] `playbook-contribute` (skill em `.claude/skills/playbook-contribute/`)
 
 ### Templates copiados
 
@@ -57,6 +65,26 @@ Mapeamento dos placeholders agnósticos do playbook para os paths reais deste pr
 
 ---
 
+## Modo de contribuição upstream
+
+Como este projeto contribui de volta pro `ok-playbook` quando descobre algo genérico que vale virar canon. Lido pelo agente [`playbook-contribute`](packages/ok-playbook/agents/playbook-contribute.md):
+
+| Campo | Valor |
+|---|---|
+| Modo | `direct` / `branch-pr` / `request` / `unknown` |
+| Canal de envio (apenas `request`) | `<como o consumidor envia a proposta ao mantenedor — email, Slack, issue, etc.>` |
+| URL do repo upstream | `<git url do ok-playbook canônico>` |
+| Branch alvo (apenas `branch-pr`) | `main` (default) ou outro |
+
+**Definição dos modos:**
+
+- **`direct`** — push direto na main do playbook. Mantenedor / projetos pessoais.
+- **`branch-pr`** — git access, mas mudanças vão por branch + merge request. Default pra times.
+- **`request`** — sem git access ao playbook; mudanças viram artefato em `<insights-root>/upstream-proposals/` pra mantenedor aplicar manualmente.
+- **`unknown`** — não definido; `playbook-contribute` pergunta na primeira invocação.
+
+---
+
 ## Mudanças no `CLAUDE.md`
 
 - [ ] Bloco "ok-playbook" inserido (snippet de `install/claude-md-snippet.md`).
@@ -66,7 +94,7 @@ Mapeamento dos placeholders agnósticos do playbook para os paths reais deste pr
 
 ## Permissões adicionadas em `.claude/settings.json`
 
-Listar o que foi adicionado:
+Listar o que foi adicionado em `permissions.allow`:
 
 ```json
 [
@@ -76,10 +104,17 @@ Listar o que foi adicionado:
 ]
 ```
 
-Permissões de worktree (path-específicas) — status:
+## Hook de worktree (PreToolUse)
 
-- [ ] Configuradas inline (substituí `<drive>` por `<X>` e `<project>` por `<Y>`).
-- [ ] Não configuradas — vou rodar a skill `update-config` depois.
+Substitui a abordagem obsoleta de 8+ regras `Bash(cd <path> && *)` por um único script Node.js. Ver [`packages/ok-playbook/patterns/worktree.md §6`](packages/ok-playbook/patterns/worktree.md) pro rationale.
+
+| Campo | Valor |
+|---|---|
+| Status | `instalado` / `não instalado (projeto sem worktrees)` / `pendente` |
+| `<PROJECT_PATH>` usado na parametrização | `<lowercase/forward-slash path do projeto>` |
+| Script copiado em | `.claude/hooks/auto-approve-worktree-bash.js` |
+| Bloco `hooks.PreToolUse` em `settings.json` | `instalado` / `não instalado` |
+| Whitelist customizado em relação ao template? | `não` / `sim — comandos adicionais: [<lista>]` |
 
 ---
 
@@ -91,6 +126,7 @@ Coisas que o playbook *recomenda* mas que precisam de decisão humana:
 - [ ] **Permissões de worktree:** configure as 8 variantes de `cd <worktree> && *` para este path específico (ver `worktree.md §6.2`).
 - [ ] **ARCHITECTURE.md por unidade:** se este projeto já tem módulos/powers/units, adicione `ARCHITECTURE.md` em cada um (ver `code-design.md §9`).
 - [ ] **Índice de docs:** se o projeto tem um `_index.md`, adicione entradas referenciando o playbook (ver `claude-md-snippet.md`).
+- [ ] **Revalidação periódica:** ao bumpar a versão do submódulo (`git submodule update --remote packages/ok-playbook`), peça "revalida o ok-playbook" para rodar `playbook-audit` — não rode `INSTALL.md` de novo.
 
 ---
 
@@ -102,12 +138,22 @@ Listar componentes que o usuário optou por não instalar e o motivo (se dado):
 
 ---
 
-## Histórico de upgrades
+## Customizações locais ignoradas no drift report
 
-| Data | De | Para | Notas |
+Arquivos que vieram do playbook mas o projeto editou intencionalmente. O `playbook-audit` lista essas divergências como nota informativa, **não** como decisão pendente. Para remover uma entrada daqui, o usuário tem que apagar manualmente — agentes nunca modificam esta seção sem ordem direta.
+
+| Path local | Origem no playbook | Razão da customização | Marcado em |
 |---|---|---|---|
-| YYYY-MM-DD | `<sha-anterior>` | `<sha-novo>` | <o que mudou> |
+| `<path>` | `<path-no-playbook>` | `<razão curta>` | `YYYY-MM-DD` |
 
 ---
 
-_Arquivo gerado por `packages/ok-playbook/INSTALL.md`. Para upgrade, peça ao Claude para "atualizar o ok-playbook"._
+## Histórico de upgrades / auditorias
+
+| Data | De (SHA) | Para (SHA) | Tipo | Notas |
+|---|---|---|---|---|
+| YYYY-MM-DD | `<sha-anterior>` | `<sha-novo>` | `install` / `audit` | <o que mudou ou foi decidido> |
+
+---
+
+_Arquivo gerado por `packages/ok-playbook/INSTALL.md`; revalidado por `packages/ok-playbook/agents/playbook-audit.md`. Para upgrade, peça ao Claude para **"revalida o ok-playbook"** (rodar `INSTALL.md` de novo só em reinstalação completa)._

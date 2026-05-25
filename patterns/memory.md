@@ -1,8 +1,8 @@
 # Memory — Sistema de Memórias Persistente
 
-> **Escopo:** user-level. Vai em `~/.claude/CLAUDE.md` via `install/global-claude-md-snippet.md` (resumo). Este doc é a referência detalhada.
+> **Escopo:** project-level. O resumo da tipologia entra no `CLAUDE.md` do projeto via [`install/claude-md-snippet.md`](../install/claude-md-snippet.md). Este doc é a referência detalhada.
 
-O Claude Code (harness) oferece um sistema de memória persistente: arquivos em `~/.claude/projects/<projeto-encoded>/memory/` carregados automaticamente como contexto entre sessões. Este pattern define **como a OK organiza essas memórias** — tipologia canônica, formato, anti-patterns.
+O Claude Code (harness) oferece um sistema de memória persistente: arquivos em `~/.claude/projects/<projeto-encoded>/memory/` carregados automaticamente como contexto entre sessões. **O sistema é project-scoped por design** (uma pasta por projeto), então a tipologia canônica também vive a nível de projeto — cada projeto que adota o playbook pode ajustar a sua. Este pattern define **a tipologia padrão da OK** — categorias, formato, anti-patterns.
 
 ---
 
