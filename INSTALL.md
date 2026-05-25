@@ -77,13 +77,15 @@ Para cada path escolhido em §2, criar pasta vazia e copiar template canônico:
 ```
 .claude/profiles/
 ├── dev-early.md       ← cópia da seção ### dev-early de patterns/profiles.md
-├── dev-stable.md      ← cópia da seção ### dev-stable
-└── review.md          ← cópia da seção review
+├── dev-stable.md      ← cópia da seção ### dev-stable de patterns/profiles.md
+└── review.md          ← cópia da seção ### review de patterns/profiles.md
 ```
 
 Como `profiles.md` no playbook é um arquivo único com as 3 seções, **extrair cada seção pra um arquivo separado** mantendo o conteúdo. Atenção à hierarquia de headings: `profiles.md` usa `### dev-early` com sub-seções `#### Comportamento Geral`, etc. Ao materializar arquivos individuais, **promover** `####` → `##` (e descartar o `###` raiz, substituindo pelo `#` do título do arquivo). Se algum perfil já existe em `.claude/profiles/`, perguntar antes de sobrescrever.
 
 **Se `git.md` foi aceito (§1):** copiar pra `.claude/context/git-rules.md`. Se já existir, perguntar antes de sobrescrever.
+
+> **Sobre a fonte canônica.** O arquivo `packages/ok-playbook/patterns/git.md` é a **fonte canônica** — atualiza junto com o submódulo. A cópia em `.claude/context/git-rules.md` existe pra compatibilidade com agentes/skills que esperam encontrar regras git no path padrão `.claude/context/`. Em divergência, o playbook vence — re-copiar a partir dele. O CLAUDE.md gerado pelo `claude-md-snippet.md` aponta pro playbook (fonte canônica); a cópia local é conveniência operacional, não fonte de verdade.
 
 Se as pastas já existem, **não sobrescrever** templates existentes — pergunte ao usuário:
 

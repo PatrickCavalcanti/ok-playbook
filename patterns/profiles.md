@@ -34,7 +34,7 @@ No boot da sessão, o `CLAUDE.md` pergunta "qual o modo desta sessão?" com as 3
 
 #### Git — Parar e solicitar
 
-- Merge ou push para `main`/`master` → usar formato de solicitação do `git-rules.md`
+- Merge ou push para `main`/`master` → usar formato de solicitação de [`git.md`](./git.md) §Solicitação de Merge
 
 #### Git — Nunca executar
 
@@ -82,7 +82,7 @@ Ver [`git.md`](./git.md) seção BLOQUEADO.
 
 #### Git — Parar e solicitar
 
-- Merge ou push para `main`/`master` → usar formato de solicitação do `git-rules.md`
+- Merge ou push para `main`/`master` → usar formato de solicitação de [`git.md`](./git.md) §Solicitação de Merge
 
 #### Git — Nunca executar
 
