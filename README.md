@@ -1,6 +1,6 @@
 # ok-playbook
 
-> 🚧 **Em construção incremental.** Estrutura inicial montada; conteúdo migrado a partir de `dev-prompts/project-architecture/ok-design-architecture/` do Igris. Será refinado em iterações, projeto a projeto.
+> 🚧 **Em construção incremental.** Estrutura inicial montada; conteúdo migrado a partir de `docs/project-architecture/ok-design-architecture/` do Igris (primeiro consumidor formal). Será refinado em iterações, projeto a projeto.
 
 ## O que é
 

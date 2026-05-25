@@ -33,6 +33,7 @@ Marque o que foi instalado nesta instância:
 - [ ] `permissions.md`
 - [ ] `memory.md` (tipologia de memórias do projeto, refletida no `CLAUDE.md`)
 - [ ] `superpowers-workflow.md` (roteamento Opus/Sonnet, cadência por fase, refletido no `CLAUDE.md`)
+- [ ] `docs-structure.md` (hierarquia `<docs-root>` + `_index.md` da arquitetura + ciclo de specs/planos)
 
 ### Agents
 
@@ -47,7 +48,8 @@ Marque o que foi instalado nesta instância:
 - [ ] `<backlog-root>/_template.md` (de `templates/feedback.md`)
 - [ ] `<drafts-root>/_template.md` (de `templates/draft.md`)
 - [ ] `<insights-root>/_template.md` (de `templates/insight.md`)
-- [ ] `templates/ARCHITECTURE.md` (referenciado por `code-design.md §9`)
+- [ ] `<arch-root>/_index.md` (de `templates/_index.template.md` — adaptar `<NOME-DO-PROJETO>` e dimensões)
+- [ ] `<arch-root>/templates/ARCHITECTURE.template.md` (de `templates/ARCHITECTURE.md`, referenciado por `code-design.md §9`)
 
 ---
 
@@ -57,11 +59,13 @@ Mapeamento dos placeholders agnósticos do playbook para os paths reais deste pr
 
 | Placeholder | Path neste projeto |
 |---|---|
+| `<docs-root>` | `<DOCS_ROOT>` |
+| `<arch-root>` | `<ARCH_ROOT>` |
+| `<agents-root>` | `<AGENTS_ROOT>` |
+| `<superpowers-root>` | `<SUPERPOWERS_ROOT>` |
 | `<backlog-root>` | `<BACKLOG_ROOT>` |
 | `<drafts-root>` | `<DRAFTS_ROOT>` |
 | `<insights-root>` | `<INSIGHTS_ROOT>` |
-| `<docs-root>` | `<DOCS_ROOT>` |
-| `<agents-root>` | `<AGENTS_ROOT>` |
 
 ---
 

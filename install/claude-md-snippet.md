@@ -30,19 +30,24 @@ Este projeto consome o `ok-playbook` em `packages/ok-playbook/`. **Leia antes de
   - [`permissions.md`](packages/ok-playbook/patterns/permissions.md) — filosofia de `.claude/settings.json`
   - [`memory.md`](packages/ok-playbook/patterns/memory.md) — tipologia de memórias persistentes do projeto
   - [`superpowers-workflow.md`](packages/ok-playbook/patterns/superpowers-workflow.md) — workflow superpowers + roteamento Opus/Sonnet
+  - [`docs-structure.md`](packages/ok-playbook/patterns/docs-structure.md) — hierarquia `<docs-root>` + `_index.md` da arquitetura + ciclo de specs/planos
 
-- **Agents agnósticos:** [`packages/ok-playbook/agents/`](packages/ok-playbook/agents/) — `docs-review`, `new-agent`
-- **Templates:** [`packages/ok-playbook/templates/`](packages/ok-playbook/templates/) — feedback, draft, insight, ARCHITECTURE
+- **Agents agnósticos:** [`packages/ok-playbook/agents/`](packages/ok-playbook/agents/) — `docs-review`, `new-agent`, `playbook-audit`, `permissions-review`, `playbook-contribute`
+- **Templates:** [`packages/ok-playbook/templates/`](packages/ok-playbook/templates/) — feedback, draft, insight, ARCHITECTURE, `_index` (esqueleto do mapa central)
 
 ### Paths deste projeto
 
+Layout canônico em [`patterns/docs-structure.md §4`](packages/ok-playbook/patterns/docs-structure.md):
+
 | Placeholder do playbook | Path neste projeto |
 |---|---|
+| `<docs-root>` | `<DOCS_ROOT>` |
+| `<arch-root>` | `<ARCH_ROOT>` |
+| `<agents-root>` | `<AGENTS_ROOT>` |
+| `<superpowers-root>` | `<SUPERPOWERS_ROOT>` |
 | `<backlog-root>` | `<BACKLOG_ROOT>` |
 | `<drafts-root>` | `<DRAFTS_ROOT>` |
 | `<insights-root>` | `<INSIGHTS_ROOT>` |
-| `<docs-root>` | `<DOCS_ROOT>` |
-| `<agents-root>` | `<AGENTS_ROOT>` |
 
 ### Regras invariantes vindas do playbook
 

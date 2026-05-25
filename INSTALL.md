@@ -30,8 +30,9 @@ Liste para o usuário o que está disponível neste playbook (lendo `packages/ok
   - Princípios agnósticos: `code-design`, `worktree`, `feedback-loop`, `agent`, `subagent-dispatch`.
   - Configuração do harness: `git`, `profiles`, `permissions`.
   - Tipologia/workflow: `memory` (tipologia de memórias do projeto), `superpowers-workflow` (roteamento Opus/Sonnet e cadência de reviews).
-- **Agents** (`packages/ok-playbook/agents/*.md`) — protocolos agnósticos: `docs-review`, `new-agent`.
-- **Templates** (`packages/ok-playbook/templates/*.md`) — feedback, draft, insight, ARCHITECTURE.
+  - Organização de docs: `docs-structure` (hierarquia `<docs-root>` + `_index.md` + ciclo de specs/planos).
+- **Agents** (`packages/ok-playbook/agents/*.md`) — protocolos agnósticos: `docs-review`, `new-agent`, `playbook-audit`, `permissions-review`, `playbook-contribute`.
+- **Templates** (`packages/ok-playbook/templates/*.md`) — feedback, draft, insight, ARCHITECTURE, `_index` (esqueleto do mapa central da arq).
 
 Pergunte:
 
@@ -43,17 +44,19 @@ A escolha do usuário define o escopo dos passos 2-5.
 
 ## 2. Decidir paths agnósticos
 
-O playbook usa placeholders `<backlog-root>`, `<drafts-root>`, `<insights-root>`, `<docs-root>`, `<agents-root>`. Pergunte ao usuário (com defaults razoáveis):
+O playbook usa 7 placeholders. Layout canônico em [`patterns/docs-structure.md §3`](./patterns/docs-structure.md) — pai único `<docs-root>`, com os outros como sub-pastas. Pergunte ao usuário (com defaults razoáveis):
 
 | Placeholder | Default sugerido |
 |---|---|
-| `<backlog-root>` | `docs/agent-feedback/` |
-| `<drafts-root>` | `docs/_drafts/` |
-| `<insights-root>` | `docs/insights/` |
-| `<docs-root>` | `dev-prompts/project-architecture/` ou `docs/architecture/` |
-| `<agents-root>` | `<docs-root>/agents/` |
+| `<docs-root>` | `docs/` |
+| `<arch-root>` | `<docs-root>/project-architecture/` |
+| `<agents-root>` | `<arch-root>/agents/` |
+| `<superpowers-root>` | `<docs-root>/superpowers/` |
+| `<backlog-root>` | `<docs-root>/agent-feedback/` |
+| `<drafts-root>` | `<docs-root>/_drafts/` |
+| `<insights-root>` | `<docs-root>/insights/` |
 
-> "Vou usar estes paths como default: `docs/agent-feedback/`, `docs/_drafts/`, `docs/insights/`, `dev-prompts/project-architecture/`. OK ou quer ajustar?"
+> "Vou usar estes paths como default — todos sob `docs/`, conforme `patterns/docs-structure.md`: `docs/project-architecture/` para arq, `docs/superpowers/` para specs/planos, `docs/agent-feedback/`, `docs/_drafts/`, `docs/insights/`. OK ou quer ajustar?"
 
 Anote a resposta — ela vai entrar no `OKPLAYBOOK.md` (§6) e ser usada para criar os arquivos vazios em §3.
 
@@ -73,7 +76,7 @@ Anotar a resposta — vai pro campo "Modo de contribuição upstream" do `OKPLAY
 
 ## 3. Criar a estrutura de pastas e templates
 
-Para cada path escolhido em §2, criar pasta vazia e copiar template canônico:
+Para cada path escolhido em §2, criar pasta vazia e copiar template canônico. Layout completo em [`patterns/docs-structure.md §3`](./patterns/docs-structure.md):
 
 ```
 <backlog-root>/
@@ -84,7 +87,33 @@ Para cada path escolhido em §2, criar pasta vazia e copiar template canônico:
 
 <insights-root>/
 └── _template.md                ← cópia de packages/ok-playbook/templates/insight.md
+
+<arch-root>/                    ← MAPA da arquitetura
+├── _index.md                   ← cópia de packages/ok-playbook/templates/_index.template.md
+│                                  (adaptar placeholders <NOME-DO-PROJETO>, <dimensão-N>)
+├── agents/                     ← vazio na instalação; preenchido conforme o projeto cria agentes
+└── templates/
+    └── ARCHITECTURE.template.md ← cópia de packages/ok-playbook/templates/ARCHITECTURE.md
+
+<superpowers-root>/             ← ciclo de vida de specs/planos
+├── drafts/                     ← vazio
+├── specs/
+│   └── done/                   ← vazio
+└── plans/
+    └── done/                   ← vazio
 ```
+
+**Sobre `<arch-root>/_index.md`:** o template canônico tem placeholders `<NOME-DO-PROJETO>`, `<dimensão-N>`, etc. Perguntar ao usuário pra preencher o nome do projeto e as 2-3 dimensões principais (módulos? powers? frontend? services?). Se o usuário não souber ainda, deixar os placeholders e marcar pra preencher depois.
+
+**Pastas vazias do `<superpowers-root>/`:** Git ignora pastas vazias. Pra preservar a estrutura no commit, usar `.gitkeep`:
+
+```
+<superpowers-root>/drafts/.gitkeep
+<superpowers-root>/specs/done/.gitkeep
+<superpowers-root>/plans/done/.gitkeep
+```
+
+**Se `docs-structure.md` foi aceito (§1):** o scaffolding acima cobre o pattern automaticamente. Se NÃO foi aceito, pular a criação de `<arch-root>/` e `<superpowers-root>/` — projeto vai usar layout próprio fora do canon.
 
 **Se `profiles.md` foi aceito (§1):** copiar os 3 perfis canônicos pra `.claude/profiles/`:
 
