@@ -17,7 +17,7 @@
     },
     "paths": {
       "type": "object",
-      "description": "Mapeamento de placeholders do playbook para paths reais deste projeto. Todos relativos ao root do projeto consumidor.",
+      "description": "Mapeamento de placeholders do playbook para paths reais deste projeto. Todos relativos ao root do projeto consumidor; devem ser diretórios terminados em '/'.",
       "required": ["docs", "arch", "agents", "superpowers", "backlog", "drafts", "insights"],
       "additionalProperties": false,
       "properties": {
@@ -51,5 +51,20 @@
         }
       }
     }
-  }
+  },
+  "examples": [
+    {
+      "$schema": "./node_modules/ok-playbook/install/ok-playbook.config.schema.json",
+      "version": "0.1.0",
+      "paths": {
+        "docs": "docs/",
+        "arch": "docs/project-architecture/",
+        "agents": "docs/project-architecture/agents/",
+        "superpowers": "docs/superpowers/",
+        "backlog": "docs/agent-feedback/",
+        "drafts": "docs/_drafts/",
+        "insights": "docs/insights/"
+      }
+    }
+  ]
 }

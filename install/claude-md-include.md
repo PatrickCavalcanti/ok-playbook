@@ -52,6 +52,8 @@ Mapeamento canônico:
 
 Antes de qualquer trabalho que toque um placeholder, leia `ok-playbook.config.json` e substitua mentalmente. Se o arquivo não existir, peça pro usuário rodar `pnpm exec ok-playbook init` antes de prosseguir.
 
+**Paths sem `<…>`** (ex.: `templates/feedback.md`, `agents/docs-review.md`, `patterns/permissions.md`) que aparecem em docs do canon são relativos ao **root do playbook em `node_modules/ok-playbook/`**, não ao root do projeto consumidor. Semântica completa de cada placeholder em [`patterns/docs-structure.md`](../patterns/docs-structure.md).
+
 ### Regras invariantes vindas do playbook
 
 - Todo agente abre arquivo de feedback como primeira ação (ver `feedback-loop.md §6` e `agent.md §4.2`).
