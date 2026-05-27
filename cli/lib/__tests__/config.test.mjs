@@ -66,6 +66,39 @@ test("readConfig throws if config missing", () => {
   }
 });
 
+test("readConfig throws clear error on invalid JSON", () => {
+  const tmp = makeTmp();
+  try {
+    writeFileSync(join(tmp, "ok-playbook.config.json"), "{ not valid json");
+    assert.throws(() => readConfig(tmp), /JSON inválido/);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("readConfig throws when paths field missing", () => {
+  const tmp = makeTmp();
+  try {
+    writeFileSync(join(tmp, "ok-playbook.config.json"), JSON.stringify({ version: "0.1.0" }));
+    assert.throws(() => readConfig(tmp), /sem campo 'paths'/);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("readConfig throws when paths incomplete", () => {
+  const tmp = makeTmp();
+  try {
+    writeFileSync(
+      join(tmp, "ok-playbook.config.json"),
+      JSON.stringify({ version: "0.1.0", paths: { docs: "docs/" } }),
+    );
+    assert.throws(() => readConfig(tmp), /paths obrigatórios.*arch.*backlog/);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test("configExists returns true/false correctly", () => {
   const tmp = makeTmp();
   try {
