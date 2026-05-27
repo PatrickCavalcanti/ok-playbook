@@ -1,11 +1,30 @@
 {
   "name": "ok-playbook",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Canon vivo de padroes da OK para arquitetura de software e colaboracao humano-IA.",
+  "type": "module",
+  "bin": {
+    "ok-playbook": "./bin/ok-playbook.mjs"
+  },
+  "files": [
+    "agents",
+    "bin",
+    "cli",
+    "install",
+    "patterns",
+    "templates",
+    "INSTALL.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/PatrickCavalcanti/ok-playbook.git"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "scripts": {
+    "test": "node --test cli/lib/__tests__/*.test.mjs"
+  }
 }
