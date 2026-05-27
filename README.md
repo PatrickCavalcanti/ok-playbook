@@ -84,39 +84,22 @@ Os agentes em [`agents/`](agents/) são implementações concretas dos papéis c
 
 ## Como é consumido
 
-Em cada monorepo consumidor, o playbook entra como submódulo dentro de `packages/`:
+A partir de v0.1.0, projetos externos consomem o playbook como dependência npm-style (não mais por cópia/vendoring). Veja [`INSTALL.md`](./INSTALL.md) para o caminho rápido:
 
 ```bash
-git submodule add https://github.com/PatrickCavalcanti/ok-playbook.git packages/ok-playbook
+pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.1.0
+pnpm exec ok-playbook init
 ```
 
-E como workspace dep no consumidor (pnpm/yarn/npm workspaces):
+`init` é **não-interativo** e **idempotente** — escreve `ok-playbook.config.json` com paths default, anexa um include estável no `CLAUDE.md`, mescla permissões em `.claude/settings.json`, scaffolda as pastas de backlog/drafts/insights/superpowers/arch, e gera `OKPLAYBOOK.md` (manifesto da instalação).
 
-```json
-{
-  "dependencies": {
-    "ok-playbook": "workspace:*"
-  }
-}
-```
+`OKPLAYBOOK.md` é o **registro de auditoria** — qual versão foi instalada, paths customizados, próximos passos manuais (ver seção "O que ainda precisa ser feito manualmente" em `INSTALL.md` enquanto MVP).
 
-Atualizar para a última versão publicada:
+Para atualizar: `pnpm up ok-playbook && pnpm exec ok-playbook init`. Se quiser auditar drift contra a versão atual do canon, pedir "**revalida o ok-playbook**" pra invocar o agente [`playbook-audit`](agents/playbook-audit.md).
 
-```bash
-git submodule update --remote packages/ok-playbook
-```
+### Modo monorepo / workspace interno
 
-## Como instalar/configurar num projeto
-
-Depois que o submódulo está presente, no projeto consumidor:
-
-1. Abrir Claude Code na raiz do projeto.
-2. Pedir: **"Instala o ok-playbook"** (ou equivalente).
-3. Claude lê [`INSTALL.md`](INSTALL.md) e executa o protocolo: pergunta paths, propõe mudanças em `CLAUDE.md` e `.claude/settings.json`, copia templates, e gera `OKPLAYBOOK.md` no root do consumidor com o manifesto.
-
-`OKPLAYBOOK.md` é o **registro de auditoria** — qual versão foi instalada, quais componentes estão ativos, quais paths foram customizados, quais próximos passos manuais ficaram pendentes.
-
-Para atualizar (upgrade): rodar `git submodule update --remote packages/ok-playbook` e pedir "**revalida o ok-playbook**" — ele invoca o agente [`playbook-audit`](agents/playbook-audit.md), que detecta drift item a item entre o canon atual do submódulo e a cópia local do projeto, e deixa você decidir o que atualizar, manter ou marcar como customização intencional. Histórico fica em `OKPLAYBOOK.history/`.
+Para projetos que mantêm o playbook como submódulo + workspace package (caso do Igris, primeiro consumidor formal), o flow é o mesmo — `node_modules/ok-playbook/` resolve via pnpm workspace pra `packages/ok-playbook/`, e `pnpm exec ok-playbook init` funciona idem.
 
 ## Como contribuir
 
