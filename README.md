@@ -2,6 +2,15 @@
 
 > 🚧 **Em construção incremental.** Estrutura inicial montada; conteúdo migrado a partir de `docs/project-architecture/ok-design-architecture/` do Igris (primeiro consumidor formal). Será refinado em iterações, projeto a projeto.
 
+## Instalação rápida
+
+```bash
+pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.1.0
+pnpm exec ok-playbook init
+```
+
+Detalhes em [`INSTALL.md`](./INSTALL.md).
+
 ## O que é
 
 `ok-playbook` é o **canon vivo** de padrões da OK para:
