@@ -36,9 +36,28 @@ const PROJECT_PATH = '<PROJECT_PATH>'; // ex: 'projetos/igris'
 const WHITELIST = new Set([
   'git',
   'node', 'npm', 'pnpm', 'npx', 'tsx', 'tsc',
+  // build/test/lint/migration toolchain comum (Vite + ok-data-bridge):
+  'vitest', 'vite', 'eslint', 'prettier', 'ok-bridge', 'drizzle-kit',
   'ls', 'cat', 'find', 'grep', 'head', 'sed', 'wc', 'pwd',
   'mkdir', 'cp', 'mv', 'rm', 'touch', 'echo',
 ]);
+
+/**
+ * Extrai o nome-base do comando: tira o caminho (`node_modules/.bin/vitest` →
+ * `vitest`), a extensão (`.cmd`/`.exe`/`.bin`/`.ps1`) e normaliza pra lowercase.
+ * NECESSÁRIO: na estratégia de install-no-worktree (default pnpm), e mesmo via
+ * junction, o tooling é invocado como `node_modules/.bin/<bin>` (porque
+ * `pnpm exec` quebra em worktree). Sem o basename, esses comandos não casariam
+ * a whitelist e gerariam prompt a cada chamada.
+ */
+function commandBasename(head) {
+  return head
+    .replace(/\\/g, '/')
+    .split('/')
+    .pop()
+    .replace(/\.(cmd|exe|bin|ps1)$/i, '')
+    .toLowerCase();
+}
 
 let raw = '';
 process.stdin.on('data', (chunk) => { raw += chunk; });
@@ -55,7 +74,7 @@ process.stdin.on('end', () => {
 
   const segments = cmd.split(/\s+&&\s+/);
   for (let i = 1; i < segments.length; i++) {
-    const head = segments[i].trim().split(/\s+/)[0];
+    const head = commandBasename(segments[i].trim().split(/\s+/)[0]);
     if (!WHITELIST.has(head)) process.exit(0);
   }
 

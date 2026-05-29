@@ -89,37 +89,49 @@ A worktree parte do commit atual da branch base (`main` no exemplo). **Arquivos 
 
 ### 5.2 Estratégia de dependências
 
-Esta é a parte que mais quebra. Worktrees compartilham `.git` mas têm working tree separado — por padrão, sem `node_modules`. Há duas estratégias:
+Worktrees compartilham `.git` mas têm working tree separado — por padrão, sem `node_modules`. Há duas estratégias. **Escolha pelo gerenciador e tipo de projeto** (critério objetivo abaixo), não por default cego.
 
-**Estratégia A — Junction de node_modules (recomendada).**
+**Critério de escolha:**
 
-Aponta o `node_modules` da worktree pro do checkout principal. Preserva a instalação existente, evita reinstalar tudo, e funciona mesmo quando `npm install` na worktree quebra (submódulos não-pusheados, workspaces órfãos, etc.).
+| Situação | Estratégia |
+|---|---|
+| **pnpm** (qualquer projeto) | **B (install real)** — ver aviso pnpm abaixo |
+| Projeto single-package (sem workspace packages locais não-compilados) | **B (install real)** |
+| Monorepo **npm/yarn** com workspace packages locais não-compilados, onde reinstalar é caro/quebra | **A (junction)** |
+
+> ⚠️ **pnpm + junction NÃO funciona — e é perigoso.** Com pnpm, qualquer `pnpm <script>`/`pnpm exec` dispara `verify-deps-before-run` → `runDepsStatusCheck`, que vê o `node_modules` junctionado como "fora de sync" e tenta `pnpm install`, o qual quer **purgar o modules dir** (`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`). Overrides (`npm_config_verify_deps_before_run=false`, `.npmrc` com `verify-deps-before-run=false`) **não surtem efeito** (validado em pnpm 11.x). Pior: se a purga prosseguir (`CI=true`) ou se um `rm -rf`/`git worktree remove` seguir o link no Windows, atinge o **`node_modules` do checkout principal** — risco real de corromper a main (incidente documentado). Por isso: **pnpm → sempre Strategy B.** E o argumento "evita reinstalar tudo" da Strategy A não vale pra pnpm — o store global content-addressable hardlinka um `pnpm install` na worktree em ~3.5s.
+
+**Estratégia B — Install real no worktree (default p/ pnpm e single-package).**
+
+Roda o install na worktree como um clone novo. Em pnpm é quase instantâneo (store global hardlinkado).
+
+```bash
+cd <project-root>/.worktrees/<feature-name>
+pnpm install        # ~3.5s via store global; ou `npm install`
+```
+
+Submódulos só-de-docs e deps git-tag resolvem normalmente; submódulo não-inicializado na worktree é ignorado pelo pnpm se não for workspace package. Quebra só em monorepo com workspace packages locais não-tracked — esse é o caso da Strategy A.
+
+**Estratégia A — Junction de node_modules (só monorepo npm/yarn c/ libs locais).**
+
+Aponta o `node_modules` da worktree pro do checkout principal — evita reinstalar quando o monorepo tem workspace packages locais que `npm install` na worktree não resolve. **Não usar com pnpm** (aviso acima). **Use path ABSOLUTO** — o relativo erra a profundidade fácil e o erro fica mascarado (§5.3):
 
 Windows:
 
 ```cmd
 cd <project-root>\.worktrees\<feature-name>
-mklink /J node_modules ..\..\node_modules
+mklink /J node_modules <ABSOLUTE_PATH>\node_modules
 ```
 
-Para monorepos com `node_modules` hoisted por package (npm workspaces não hoista tudo pra raiz), criar junction também nos pacotes que precisam:
+(ex.: `mklink /J node_modules E:\Projetos\MyApp\node_modules`. Para `node_modules` hoisted por package, criar junction também em cada `packages/<name>/node_modules` apontando pro absoluto correspondente.)
 
-```cmd
-cd <project-root>\.worktrees\<feature-name>\packages\<package-name>
-mklink /J node_modules ..\..\..\..\packages\<package-name>\node_modules
-```
-
-POSIX equivalente:
+POSIX:
 
 ```bash
-ln -s "$(pwd)/../../node_modules" node_modules
+ln -s "<project-root>/node_modules" node_modules
 ```
 
-**Limitação:** mudanças em `package.json` dentro da worktree não atualizam deps automaticamente — `npm install` ali ainda quebra. Solução pragmática: instalar a dep nova no checkout principal com `npm install --no-save <pkg>`. Junction picks up. Ao mergear, a entrada do `package.json` da worktree vai junto e o `npm install` formal acontece no main.
-
-**Estratégia B — Install completo no worktree.**
-
-Roda `npm install` (ou equivalente) na worktree como se fosse um clone novo. Funciona em projetos sem dependências exóticas. Em monorepos com submódulos, workspaces locais não-tracked, ou packages registrados em `package.json` mas não publicados, quebra. Validar caso a caso.
+**Limitação:** mudanças em `package.json` na worktree não atualizam deps (e `npm install` ali quebra). Instalar a dep no checkout principal (`npm install --no-save <pkg>`); junction picks up.
 
 ### 5.3 Pegadinhas comuns
 
@@ -129,6 +141,8 @@ Roda `npm install` (ou equivalente) na worktree como se fosse um clone novo. Fun
 | `npm install` falha com `upload-pack: not our ref` | Submódulo com commit local não-pusheado | Pular submódulos: `git submodule update --init --recursive --remote` falha; use junction |
 | Spec/plano que acabei de escrever sumiu na worktree | Arquivo uncommitted no main não vai pra worktree | Commit antes de `git worktree add`, ou copia o arquivo manualmente |
 | Tests acham `node_modules` mas não acham `react` | npm workspaces hoist parcial | Junction adicional em `packages/<frontend>/node_modules` |
+| `pnpm <script>`/`pnpm exec` na worktree tenta reinstalar/purgar (`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ou `ENOTDIR`) | pnpm `verify-deps-before-run` vê o junction "fora de sync"; com risco de purgar o `node_modules` da main | **Não usar junction com pnpm** — usar Strategy B (install real). Se já está em junction, invocar binários via `node_modules/.bin/<bin>` direto contorna pontualmente, mas a solução é reinstalar. |
+| `react` resolve mas `node_modules/.bin/` "não existe" na worktree | junction `mklink ..\..\..` apontou um nível **acima** do projeto (Node sobe na árvore e acha o node_modules real, mascarando a junction quebrada) | Recriar a junction com **path absoluto** (`mklink /J node_modules E:\...\<proj>\node_modules`) |
 
 ---
 
@@ -156,9 +170,11 @@ Um único script Node.js intercepta toda call do Bash tool, faz regex contra o `
 
 **Template canônico:** [`../install/hooks/auto-approve-worktree-bash.js`](../install/hooks/auto-approve-worktree-bash.js). Tem um placeholder `<PROJECT_PATH>` substituído na instalação pelo path real do projeto (ex: `projetos/igris`).
 
-**Whitelist default** (21 comandos cobrindo dev típico):
+**Whitelist default** (dev típico + toolchain de build/test/migration):
 
-`git, node, npm, pnpm, npx, tsx, tsc, ls, cat, find, grep, head, sed, wc, pwd, mkdir, cp, mv, rm, touch, echo`
+`git, node, npm, pnpm, npx, tsx, tsc, vitest, vite, eslint, prettier, ok-bridge, drizzle-kit, ls, cat, find, grep, head, sed, wc, pwd, mkdir, cp, mv, rm, touch, echo`
+
+> O template aplica `commandBasename()` ao head de cada segmento, então binários invocados via path relativo (`node_modules/.bin/vitest` → `vitest`) casam o whitelist. Isso é **essencial**: tanto na Strategy B quanto via junction, o tooling roda como `node_modules/.bin/<bin>` (porque `pnpm exec` quebra em worktree). Sem o basename, cada chamada geraria prompt. Inclua na whitelist os bins reais do projeto (ex.: `ok-bridge`, `drizzle-kit` para projetos ok-data-bridge; `vite`/`vitest` para Vite).
 
 **Configuração em `.claude/settings.json`** (relativa a `${CLAUDE_PROJECT_DIR}`):
 
@@ -281,6 +297,17 @@ git worktree prune
 
 **Não deletar `.worktrees/<name>` com `rm -rf`** sem antes rodar `git worktree remove` ou `git worktree prune` — git mantém referência interna em `.git/worktrees/` que vira lixo dangling.
 
+> 🛑 **Windows + junction — ordem obrigatória (risco de corromper a main).** Se a worktree usa junction de `node_modules` (Strategy A), **remova o junction PRIMEIRO** com `rmdir` (sem `/S` — remove só o reparse point, não o alvo) **antes** de qualquer `git worktree remove`/`rm -rf`:
+>
+> ```cmd
+> cd <project-root>\.worktrees\<feature-name>
+> rmdir node_modules            REM remove só o link, não o node_modules da main
+> cd <project-root>
+> git worktree remove .worktrees\<feature-name>
+> ```
+>
+> **Nunca** rodar `rm -rf` (ou `git worktree remove --force`) sobre um diretório que ainda contém um junction: no Windows o delete recursivo **segue o link e apaga o conteúdo do alvo** — ou seja, o `node_modules` do checkout principal. Incidente real: após isso, `npm run dev` na main falhou com `MODULE_NOT_FOUND vite`; recuperação só com `CI=true pnpm install`. (Mais uma razão pra preferir Strategy B, que não tem junction pra limpar.)
+
 ---
 
 ## 10. Anti-padrões
@@ -331,9 +358,16 @@ Pra o skill `update-config` (ou auditoria manual) rodar contra um projeto:
 - [ ] **NÃO** existe `Bash(git push *)` global
 - [ ] **NÃO** existe `Bash(git reset --hard *)` global
 
+### Estratégia de dependências da worktree (§5.2)
+
+- [ ] Gerenciador é **pnpm**? → worktree usa **install real** (Strategy B), NÃO junction
+- [ ] Projeto single-package (sem workspace packages locais não-compilados)? → Strategy B
+- [ ] Só monorepo **npm/yarn** com libs locais justifica junction (Strategy A); se usar, com **path absoluto**
+- [ ] Worktree existente: tem `node_modules` real (install), não junction quebrada? (`ls node_modules/.bin/` deve listar os bins)
+
 ### Sanidade do checkout principal
 
-- [ ] `node_modules` (raiz) existe e está com deps instalados — caso contrário junction não tem o que apontar
+- [ ] `node_modules` (raiz) existe e está com deps instalados — (na Strategy A, o junction não tem o que apontar sem isso)
 - [ ] Em monorepo: `node_modules` de cada package também populado
 
 ---

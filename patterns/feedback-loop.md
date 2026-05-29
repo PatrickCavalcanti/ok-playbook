@@ -204,6 +204,18 @@ Acrescentar ao final do arquivo:
 
 **Registra mas não implementa**: mudanças que exigem decisão arquitetural maior. Vão pra `<insights-root>/` para revisão humana.
 
+### 8.6 Feedback que aponta para docs do PLAYBOOK (roteamento obrigatório)
+
+Uma "Sugestão para docs" pode apontar para um documento **do próprio ok-playbook** (`patterns/worktree.md`, `agents/*.md`, `install/*`, hook template, etc.) e não para um doc local do projeto. O processador **não pode aplicar isso editando a cópia/submódulo do playbook** — essa cópia é canon read-only (consumida via `node_modules/` ou submódulo). Editar localmente cria drift que o próximo `pnpm up`/audit reverte.
+
+**Regra:** quando o alvo da sugestão é um arquivo do playbook, o processador **NÃO marca o feedback como `reviewed`** com base numa edição local. Em vez disso:
+
+1. Roteia o item para **`playbook-contribute`** (materializa a mudança upstream no canon).
+2. Mantém o feedback `pending-review` **até** a contribuição upstream existir (PR/commit no playbook), OU registra um insight em `<insights-root>/` rastreando a pendência se o upstream não puder ser feito agora.
+3. Só então fecha.
+
+> **Por quê (falha real observada):** uma sugestão pra `worktree.md` ficou `pending-review` por uma sessão inteira porque o processador não tinha rota pra docs do playbook — o bug que ela descrevia reincidiu e causou dano. Sem esta regra de roteamento, feedback que aponta pro canon evapora.
+
 ---
 
 ## 9. Detecção de padrões → drafts e insights
@@ -244,6 +256,8 @@ Todo produtor termina sua execução com a mesma oferta:
 Contagem inclui feedbacks de sessões *anteriores* ainda pendentes — o processador é a oportunidade natural de drenar o backlog.
 
 **Sobre execuções limpas (sem arquivo criado)**: a oferta de processar continua existindo — sempre pode haver pendentes de sessões anteriores. Quando não há arquivo nesta execução, citar apenas a contagem de pendentes anteriores. Quando há arquivo desta execução, somá-lo à contagem.
+
+**Pendências que envelhecem (anti-evaporação):** a oferta não cita só a *contagem* — se houver feedback `pending-review` de **sessões anteriores** (especialmente com "Sugestões para docs" apontando pro playbook, §8.6), **listar os arquivos antigos por nome** e sinalizar que estão parados. Pendência de doc do playbook que sobrevive a 2+ sessões é sinal de rota quebrada (§8.6) — escalar explicitamente, não deixar só na contagem. Um feedback de processo que descreve um bug e fica parado faz o bug reincidir.
 
 ---
 
