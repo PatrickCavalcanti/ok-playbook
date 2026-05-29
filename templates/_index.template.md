@@ -4,7 +4,9 @@ Esta pasta contém a documentação de arquitetura do **<NOME-DO-PROJETO>** — 
 
 **Quando este documento entrar em conflito com o código, o código vence — atualize a documentação.**
 
-> Este `_index.md` segue o pattern canônico [`docs-structure.md`](../../packages/ok-playbook/patterns/docs-structure.md) do `ok-playbook`. Mantenha as seções obrigatórias do §5.1 — adapte conteúdo, não estrutura.
+> Este `_index.md` segue o pattern canônico [`docs-structure.md`](<playbook-root>/patterns/docs-structure.md) do `ok-playbook`. Mantenha as seções obrigatórias do §5.1 — adapte conteúdo, não estrutura.
+>
+> **Placeholder `<playbook-root>`:** substitua por onde o `ok-playbook` está instalado neste projeto — `node_modules/ok-playbook` (instalação via pacote, padrão) ou `packages/ok-playbook` (submódulo/monorepo). Todas as referências ao playbook abaixo usam este placeholder.
 
 ---
 
@@ -34,13 +36,13 @@ project-architecture/
 | Você vai... | Leia primeiro |
 |---|---|
 | Entender o projeto pela primeira vez | `project.md` |
-| Verificar conformidade arquitetural | `ok-design-architecture/code-design-partners.md` (se houver) ou `packages/ok-playbook/patterns/code-design.md` |
+| Verificar conformidade arquitetural | `ok-design-architecture/code-design-partners.md` (se houver) ou `<playbook-root>/patterns/code-design.md` |
 | Criar/modificar `<dimensão-1>` (ex: módulo) | `<dimensão-1>.md` → invocar `agents/<dimensão-1>.md` (se existir) |
 | Criar/modificar `<dimensão-2>` | `<dimensão-2>.md` → invocar `agents/<dimensão-2>.md` |
-| Analisar feedback de agentes e atualizar docs | invocar `packages/ok-playbook/agents/docs-review.md` |
-| Aprovar rascunho e criar novo agente | invocar `packages/ok-playbook/agents/new-agent.md` |
-| Criar worktree ou ajustar permissões | `packages/ok-playbook/patterns/worktree.md` |
-| Trabalhar com superpowers workflow | `packages/ok-playbook/patterns/superpowers-workflow.md` |
+| Analisar feedback de agentes e atualizar docs | invocar `<playbook-root>/agents/docs-review.md` |
+| Aprovar rascunho e criar novo agente | invocar `<playbook-root>/agents/new-agent.md` |
+| Criar worktree ou ajustar permissões | `<playbook-root>/patterns/worktree.md` |
+| Trabalhar com superpowers workflow | `<playbook-root>/patterns/superpowers-workflow.md` |
 
 > **Placeholder:** adicionar linhas conforme o projeto cresce. Cada agente domain merece uma linha. Cada dimensão merece uma linha.
 
@@ -62,7 +64,7 @@ project-architecture/
 ### Quem atualiza
 
 - **Agente de domínio**: registra fricções em `<backlog-root>/<agente>/` e oferece invocar `docs-review` ao terminar
-- **Agente docs-review** (canon, `packages/ok-playbook/agents/docs-review.md`): lê o feedback e aplica as melhorias
+- **Agente docs-review** (canon, `<playbook-root>/agents/docs-review.md`): lê o feedback e aplica as melhorias
 - **Sessão manual**: se identificar inconsistência, atualizar diretamente e documentar no commit
 
 ### O que nunca fazer
@@ -78,7 +80,7 @@ project-architecture/
 ```
 agente executa
   → registra fricções em <backlog-root>/<agente>/YYYY-MM-DD_HHmm.md
-  → ao terminar, oferece invocar docs-review (canon: packages/ok-playbook/agents/docs-review.md)
+  → ao terminar, oferece invocar docs-review (canon: <playbook-root>/agents/docs-review.md)
 
 docs-review executa
   → lê todos os feedbacks com status: pending-review
@@ -91,7 +93,7 @@ docs-review executa
 usuário revisa <drafts-root>/
   → aprova (status: approved), ajusta ou descarta
 
-new-agent executa (com rascunho aprovado, canon: packages/ok-playbook/agents/new-agent.md)
+new-agent executa (com rascunho aprovado, canon: <playbook-root>/agents/new-agent.md)
   → cria agents/<nome>.md + .claude/skills/<nome>/SKILL.md
   → atualiza _index.md
   → arquiva o rascunho (status: implemented)
