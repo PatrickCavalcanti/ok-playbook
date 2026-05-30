@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 (2026-05-29)
+
+Correção de template + documentação de instalação/atualização.
+
+### Mudanças
+- **`templates/_index.template.md`** — os 9 paths hardcoded `packages/ok-playbook/` viraram placeholder `<playbook-root>`. Como o `init` copia o template verbatim, o path fixo gerava links quebrados no `_index.md` scaffoldado para consumidores que instalam via `node_modules/ok-playbook` (layout canônico). A linha 7 também perdeu o prefixo `../../` espúrio.
+- **`README.md` / `INSTALL.md`** — a instalação rápida passa a referenciar a última tag publicada (`v0.2.1`); a seção de atualização foi corrigida (dep git pinada em tag **não** sobe de versão com `pnpm up` — atualizar = trocar a tag) e ganhou o passo de verificação (`playbook-audit`).
+
 ## 0.2.0 (2026-05-29)
 
 Correções de worktree/permissões a partir de fricções reais em projetos consumidores (pnpm + junction, Windows). (Plugin/shim de skills/profiles permanece fora deste release — segue como trabalho futuro.)

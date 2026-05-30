@@ -3,9 +3,11 @@
 ## Caminho rápido (recomendado)
 
 ```bash
-pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.1.0
+pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1
 pnpm exec ok-playbook init
 ```
+
+> Use sempre a última tag publicada (hoje `v0.2.1`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
 
 O `init` é idempotente — rode quantas vezes quiser. Faz:
 
@@ -19,10 +21,14 @@ Customizar paths: edite `ok-playbook.config.json` depois. Re-rodar `init` não s
 
 ## Atualizando
 
+A dependência é pinada numa tag git, então `pnpm up` **não cruza versões** (a tag é fixa). Para subir de uma versão antiga para a nova, troque a tag e re-rode o `init`:
+
 ```bash
-pnpm up ok-playbook
-pnpm exec ok-playbook init   # re-roda; só atualiza o que mudou
+pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1  # nova tag
+pnpm exec ok-playbook init   # re-roda; idempotente, só atualiza o que mudou
 ```
+
+Depois, **verifique o drift** contra o canon novo: peça "**revalida o ok-playbook**" para invocar o agente `playbook-audit` (ver [`agents/playbook-audit.md`](agents/playbook-audit.md)).
 
 ## Modo de contribuição upstream
 

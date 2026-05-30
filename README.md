@@ -5,9 +5,22 @@
 ## Instalação rápida
 
 ```bash
-pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.1.0
+pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1
 pnpm exec ok-playbook init
 ```
+
+> Use sempre a **última tag publicada** (hoje `v0.2.1`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
+
+### Atualizando uma instalação existente
+
+A dependência é pinada numa tag git, então `pnpm up` **não cruza versões** (a tag é fixa). Para subir de uma versão antiga para a nova, troque a tag e re-rode o `init`:
+
+```bash
+pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1  # nova tag
+pnpm exec ok-playbook init   # idempotente — só atualiza o que mudou
+```
+
+Depois, **verifique o drift** contra o canon novo: peça "**revalida o ok-playbook**" para invocar o agente [`playbook-audit`](agents/playbook-audit.md).
 
 Detalhes em [`INSTALL.md`](./INSTALL.md).
 
@@ -87,7 +100,7 @@ Os agentes em [`agents/`](agents/) são implementações concretas dos papéis c
 A partir de v0.1.0, projetos externos consomem o playbook como dependência npm-style (não mais por cópia/vendoring). Veja [`INSTALL.md`](./INSTALL.md) para o caminho rápido:
 
 ```bash
-pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.1.0
+pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1
 pnpm exec ok-playbook init
 ```
 
@@ -95,7 +108,7 @@ pnpm exec ok-playbook init
 
 `OKPLAYBOOK.md` é o **registro de auditoria** — qual versão foi instalada, paths customizados, próximos passos manuais (ver seção "O que ainda precisa ser feito manualmente" em `INSTALL.md` enquanto MVP).
 
-Para atualizar: `pnpm up ok-playbook && pnpm exec ok-playbook init`. Se quiser auditar drift contra a versão atual do canon, pedir "**revalida o ok-playbook**" pra invocar o agente [`playbook-audit`](agents/playbook-audit.md).
+Para atualizar de uma versão antiga para a nova, troque a tag git e re-rode o init (`pnpm up` não cruza versões — a tag é fixa): `pnpm add git+ssh://...ok-playbook#<nova-tag> && pnpm exec ok-playbook init`. Em seguida, audite o drift contra o canon novo pedindo "**revalida o ok-playbook**" — invoca o agente [`playbook-audit`](agents/playbook-audit.md). Ver a seção [Atualizando uma instalação existente](#atualizando-uma-instalação-existente).
 
 ### Modo monorepo / workspace interno
 
