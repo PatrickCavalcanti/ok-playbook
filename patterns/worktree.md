@@ -98,6 +98,7 @@ Worktrees compartilham `.git` mas têm working tree separado — por padrão, se
 | **pnpm** (qualquer projeto) | **B (install real)** — ver aviso pnpm abaixo |
 | Projeto single-package (sem workspace packages locais não-compilados) | **B (install real)** |
 | Monorepo **npm/yarn** com workspace packages locais não-compilados, onde reinstalar é caro/quebra | **A (junction)** |
+| Monorepo **pnpm** com workspace packages **externos** por path relativo (`../outro-repo/...` no `pnpm-workspace.yaml`) | **C (junction seletivo)** — B quebra: em worktree aninhada o `../` resolve pra dentro de `.worktrees/` (`ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`) |
 
 > ⚠️ **pnpm + junction NÃO funciona — e é perigoso.** Com pnpm, qualquer `pnpm <script>`/`pnpm exec` dispara `verify-deps-before-run` → `runDepsStatusCheck`, que vê o `node_modules` junctionado como "fora de sync" e tenta `pnpm install`, o qual quer **purgar o modules dir** (`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`). Overrides (`npm_config_verify_deps_before_run=false`, `.npmrc` com `verify-deps-before-run=false`) **não surtem efeito** (validado em pnpm 11.x). Pior: se a purga prosseguir (`CI=true`) ou se um `rm -rf`/`git worktree remove` seguir o link no Windows, atinge o **`node_modules` do checkout principal** — risco real de corromper a main (incidente documentado). Por isso: **pnpm → sempre Strategy B.** E o argumento "evita reinstalar tudo" da Strategy A não vale pra pnpm — o store global content-addressable hardlinka um `pnpm install` na worktree em ~3.5s.
 
@@ -133,6 +134,20 @@ ln -s "<project-root>/node_modules" node_modules
 
 **Limitação:** mudanças em `package.json` na worktree não atualizam deps (e `npm install` ali quebra). Instalar a dep no checkout principal (`npm install --no-save <pkg>`); junction picks up.
 
+**Estratégia C — Junction seletivo (monorepo pnpm com workspace packages externos por path relativo).**
+
+Para quando **B é impossível** (workspace packages fora do repo por `../`, que numa worktree aninhada resolvem errado) e **A pura é errada** (os symlinks do namespace do workspace no `node_modules` do main são absolutos — junction do diretório inteiro faz `@<ns>/*` resolver pros pacotes do **main**, e qualquer plano cross-package testa o código errado).
+
+Receita (idempotente, sem admin — `fs.symlinkSync(real, link, 'junction')` no Windows):
+
+1. Junction de **cada entrada** do `node_modules` top-level do main na worktree, **exceto o namespace do workspace** (`@<ns>`). Pressupõe top-level hoisted (deps externas resolvem por aí). Paths **absolutos** (ver pegadinha §5.3).
+2. Criar `node_modules/@<ns>/` real na worktree, com cada `@<ns>/<pkg>` → `packages/<pkg>` **da worktree**.
+3. **NÃO** junctionar `packages/<P>/node_modules` per-package — é redundante com o hoisting e perigoso: o junction aponta pro main, então quem "conserta" algo lá dentro **escreve no main**.
+4. **Agentes/subagentes nunca mexem em `node_modules`** — problema de resolução é reportado ao controller, não "consertado" localmente.
+5. Validar: `require.resolve` de um `@<ns>/*` → worktree; de uma dep externa → main.
+
+> ⚠️ O aviso pnpm acima **continua valendo** em C: não rodar `pnpm install`/`pnpm <script>`/`pnpm exec` dentro da worktree (risco de purge via `verify-deps-before-run`). Invocar binários direto — `node`, `node_modules/.bin/<bin>`, `npx --no-install` — para testes e builds.
+
 ### 5.3 Pegadinhas comuns
 
 | Sintoma | Causa | Fix |
@@ -143,6 +158,7 @@ ln -s "<project-root>/node_modules" node_modules
 | Tests acham `node_modules` mas não acham `react` | npm workspaces hoist parcial | Junction adicional em `packages/<frontend>/node_modules` |
 | `pnpm <script>`/`pnpm exec` na worktree tenta reinstalar/purgar (`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` ou `ENOTDIR`) | pnpm `verify-deps-before-run` vê o junction "fora de sync"; com risco de purgar o `node_modules` da main | **Não usar junction com pnpm** — usar Strategy B (install real). Se já está em junction, invocar binários via `node_modules/.bin/<bin>` direto contorna pontualmente, mas a solução é reinstalar. |
 | `react` resolve mas `node_modules/.bin/` "não existe" na worktree | junction `mklink ..\..\..` apontou um nível **acima** do projeto (Node sobe na árvore e acha o node_modules real, mascarando a junction quebrada) | Recriar a junction com **path absoluto** (`mklink /J node_modules E:\...\<proj>\node_modules`) |
+| Mudança em workspace package da worktree não aparece pra outros pacotes (teste cross-package roda o código velho) | Junction não-seletivo: `@<ns>/*` do `node_modules` junctionado resolve pros pacotes do **main** (symlinks absolutos) | Estratégia C — junction seletivo com `@<ns>/*` → worktree |
 
 ---
 
