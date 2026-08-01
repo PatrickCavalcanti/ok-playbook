@@ -43,6 +43,8 @@ Este doc serve a três usos:
 | Task experimental que pode ser descartada | **Sim** (subagente em worktree contém o estrago) |
 | Edição de 1 arquivo / 1 commit | **Não** (overhead não compensa) |
 | Tarefa que precisa de revisão entre passos | **Sim** (papéis separados de implementer/reviewer cabem aqui) |
+| Levantamento amplo de contexto antes de decidir (varrer N arquivos/módulos) | **Sim** (Scout em Sonnet; ver §4.1) |
+| Leitura pontual de 1 arquivo cujo path já se conhece | **Não** (ler inline; overhead de dispatch não compensa) |
 | Trabalho de doc/spec/plano | **Não** (esses ficam no controller; ver [`worktree.md §3`](./worktree.md)) |
 
 **Sinal forte para despachar**: o controller começa a perder fluência por causa do volume de contexto de execução (logs longos, diffs grandes, output de testes). Subagente devolve só o resultado.
@@ -55,6 +57,7 @@ Este doc serve a três usos:
 
 | Papel do subagente | Modelo |
 |---|---|
+| **Scout** (varre arquivos, extrai o relevante, devolve resumo — não muda código) | menor capaz |
 | **Implementer** (executa task do plano) | menor capaz (rápido, barato) |
 | **Spec reviewer** (verifica conformidade com spec) | menor capaz |
 | **Code quality reviewer** (revisão de qualidade entre tasks) | maior capacidade |
@@ -62,12 +65,30 @@ Este doc serve a três usos:
 
 Tradução prática (Anthropic em 2026-Q2):
 
-- Implementer / spec reviewer → **Sonnet**.
+- Scout / implementer / spec reviewer → **Sonnet**.
 - Code quality reviewer / final reviewer → **Opus**.
 
 **Por que fixa**: avaliar caso-a-caso "esta task é complexa o bastante para Opus?" introduz variabilidade arbitrária. Implementação repetitiva no Sonnet, decisão arquitetural no Opus — separação por papel é mais robusta que por percepção de complexidade.
 
 Esta política **sobrescreve** linguagem vaga em skills externas que digam coisas como "use o modelo mais capaz" ou "use um modelo rápido e barato" sem especificar papel.
+
+### 4.1 Scout: levantamento de contexto antes da decisão
+
+Levantamento amplo (varrer múltiplos arquivos/módulos, mapear convenções, extrair contratos, descobrir onde algo mora) é trabalho de leitura rápida — papel **Scout**, despachado em **Sonnet** (tipicamente o agente `Explore`). O controller (Opus) recebe só a conclusão e decide.
+
+Padrão:
+
+1. Controller (Opus) identifica **o que precisa saber** — não o que precisa fazer.
+2. Despacha um ou mais Scouts (Sonnet) com escopo de leitura claro: "leia X, extraia Y, devolva resumo — não proponha mudança".
+3. Controller sintetiza os retornos e define a implementação em Opus.
+
+**Limites do Scout:**
+
+- **Não compartilha o contexto da conversa.** Recebe só o prompt. Serve a levantamento bem-escopado, não a tarefa que depende da nuance da conversa inteira.
+- **Leitura pontual fica no controller.** Um arquivo único cujo path já se conhece: ler inline é mais rápido que orquestrar um Scout. Scout compensa quando há varredura (múltiplos arquivos, convenção a descobrir, dump grande que sujaria a janela do controller).
+- **Scout não decide.** "Levante e já implemente" empurra síntese para o Sonnet — viola §6.3. Scout devolve dados; Opus decide.
+
+**Mecanismo:** o modelo da sessão principal **não troca no meio da tarefa**. Skill/CLAUDE.md não fazem hot-swap do controller. O ganho "Sonnet lê, Opus decide" vem de *delegar a leitura a um subagente Sonnet*, não de alternar o modelo do thread principal.
 
 ---
 
@@ -124,6 +145,17 @@ Mínimo do prompt:
 - **Protocolo de bloqueio** ("se encontrar ambiguidade não-coberta no plano, devolver BLOCKED com pergunta; não decidir sozinho").
 
 **Não delegue síntese.** "Com base na sua análise, implemente X" empurra decisão para o subagente. Prompt diz exatamente o que mudar, onde, e como verificar.
+
+**Passe o diretório de trabalho em TEXTO, não como `cd` no comando.**
+
+```
+❌  "Rode `cd e:/Projetos/App/.worktrees/feat && npm test`"
+✅  "Você trabalha em e:/Projetos/App/.worktrees/feat. Rode `npm test` a partir de lá."
+```
+
+O cwd do Bash tool **persiste entre chamadas** — um `cd` no primeiro comando basta, e mesmo ele costuma ser desnecessário. Já mandar `cd <path> &&` colado em cada comando é a causa nº 1 de prompt de permissão: o matcher trata `cd` como context-changing e `Bash(npm *)` deixa de casar (medido: ~70% das chamadas Bash em dois projetos, ver [`./permissions.md`](./permissions.md)). Um prompt de subagente que ensina o formato errado reproduz a fricção em cada task despachada — e o subagente não tem como saber que está pagando esse custo.
+
+Para git em multi-repo, `git -C <path>` continua sendo a forma certa (§6.4) — ele não tem o problema do `cd`.
 
 ### 6.4 Verificações antes do commit
 
@@ -190,6 +222,9 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 | Avaliar complexidade da task para escolher modelo | Variabilidade arbitrária; usa regra por papel (§4) |
 | Implementer em Opus "porque é importante" | Cara sem ganho; Sonnet implementa, Opus revisa |
 | Reviewer em Sonnet "para economizar" | Revisão é onde o modelo grande compensa; economizar ali zera o valor da revisão |
+| Levantamento amplo feito inline no Opus quando dava pra delegar a um Scout Sonnet | Queima janela e tempo do controller; Scout devolve só o resumo (§4.1) |
+| Scout despachado para ler 1 arquivo de path conhecido | Overhead de dispatch > ganho; leia inline |
+| Scout que "já implementa" o que levantou | Empurra decisão pro Sonnet; Scout devolve dados, Opus decide |
 | Subagente decidindo escopo quando o plano não cobre | Improviso silencioso vira divergência plano ↔ código |
 | Subagente instalando dep | Quebra centralização do ambiente; package-lock divergente |
 | Controller pulando discovery (Task 0) quando spec vem de fora | Desvios viram bugs descobertos na metade da execução |

@@ -1,7 +1,24 @@
 {
-  "_comment": "Permissões path-agnostic + hook canônico do ok-playbook. Para mesclar em .claude/settings.json do projeto consumidor (§5 de INSTALL.md). O bloco hooks registra o PreToolUse de auto-approve-worktree-bash.js (template em install/hooks/) — INSTALL copia o JS pra .claude/hooks/ substituindo <PROJECT_PATH>. Variantes path-specific de worktree NÃO existem mais aqui — viraram hook (ver patterns/worktree.md §6.2).",
+  "_comment": "Permissões path-agnostic + hook canônico do ok-playbook. Para mesclar em .claude/settings.json do projeto consumidor (§5 de INSTALL.md). O bloco hooks registra o PreToolUse de auto-approve-project-bash.mjs (template em install/hooks/) — INSTALL copia o JS pra .claude/hooks/ e ajusta PROJETO/SCRATCH/LEITURA pela medição do passo 1. Variantes path-specific de worktree NÃO existem mais aqui — viraram hook (ver patterns/worktree.md §6.2).",
+
+  "_comment_deny": "A lista de nunca mora aqui, e não na ausência de allow: com Bash(git *) liberado, um git push --force já estaria aprovado, e o whitelist do hook (que espelha as rules) herdaria a folga. deny ganha do hook e de qualquer rule larga. Ver patterns/permissions.md.",
+
+  "_comment_powershell": "Em máquina Windows a tool PowerShell responde por ~17% das chamadas de shell e sofre a MESMA doença (56% começam com Set-Location/cd, e atribuição esconde o cmdlet do matcher). Por isso os dois matchers. Os dois hooks compartilham a política em lib/areas.mjs.",
+
+  "_comment_rm": "Bash(rm *) e Bash(mv *) foram REMOVIDOS: aprovavam rm -rf src no root e anulavam a política de destrutivos do hook (worktree livre, root pede). Bash(rm -rf *.worktrees/*) ficou.",
 
   "permissions": {
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -*f*)",
+      "Bash(npm install -g*)",
+      "Bash(npm i -g*)",
+      "Bash(pnpm add -g*)",
+      "Bash(npm publish*)",
+      "Bash(pnpm publish*)"
+    ],
     "allow": [
       "Bash(git *)",
       "Bash(node *)",
@@ -19,8 +36,6 @@
       "Bash(wc *)",
       "Bash(mkdir *)",
       "Bash(cp *)",
-      "Bash(mv *)",
-      "Bash(rm *)",
       "Bash(touch *)",
       "Bash(echo *)",
       "Bash(cmd //c \"mklink *\")",
@@ -42,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/auto-approve-worktree-bash.js"
+            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/auto-approve-project-bash.js"
           }
         ]
       }

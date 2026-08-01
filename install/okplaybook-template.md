@@ -108,17 +108,23 @@ Listar o que foi adicionado em `permissions.allow`:
 ]
 ```
 
-## Hook de worktree (PreToolUse)
+## Hooks de permissão (PreToolUse)
 
-Substitui a abordagem obsoleta de 8+ regras `Bash(cd <path> && *)` por um único script Node.js. Ver [`packages/ok-playbook/patterns/worktree.md §6`](packages/ok-playbook/patterns/worktree.md) pro rationale.
+Substituem a abordagem obsoleta de 8+ regras `Bash(cd <path> && *)` por scripts Node.js com política única. Rationale em [`packages/ok-playbook/patterns/permissions.md`](packages/ok-playbook/patterns/permissions.md); como customizar, em §"Customizar: onde mexer para cada coisa".
 
 | Campo | Valor |
 |---|---|
-| Status | `instalado` / `não instalado (projeto sem worktrees)` / `pendente` |
-| `<PROJECT_PATH>` usado na parametrização | `<lowercase/forward-slash path do projeto>` |
-| Script copiado em | `.claude/hooks/auto-approve-worktree-bash.js` |
-| Bloco `hooks.PreToolUse` em `settings.json` | `instalado` / `não instalado` |
+| Status | `instalado` / `não instalado` / `pendente` |
+| `PROJETO` usado na parametrização | `<path absoluto, lowercase, forward-slash, com drive>` |
+| `SCRATCH` (áreas descartáveis) | `<lista>` |
+| `LEITURA` (projetos irmãos, só leitura) | `<lista>` / `nenhum` |
+| Hook de Bash | `.claude/hooks/auto-approve-project-bash.mjs` — cobertura `<N>%` |
+| Hook de PowerShell | `.claude/hooks/auto-approve-project-powershell.mjs` — cobertura `<N>%` / `não instalado (projeto POSIX)` |
+| Política compartilhada | `.claude/hooks/lib/areas.mjs` |
+| Matchers em `settings.json` | `Bash` / `Bash + PowerShell` |
+| Bloco `permissions.deny` | `instalado` / `não instalado` |
 | Whitelist customizado em relação ao template? | `não` / `sim — comandos adicionais: [<lista>]` |
+| Suites passando (`hook-test*.mjs`) | `<N>/<N>` e `<N>/<N>` |
 
 ---
 

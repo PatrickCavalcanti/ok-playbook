@@ -182,13 +182,26 @@ Detalhes e referências em [`./permissions.md §Quando rules não bastam`](./per
 
 ### 6.2 Solução canônica: PreToolUse hook
 
-Um único script Node.js intercepta toda call do Bash tool, faz regex contra o `command`, e retorna `allow` para `cd <worktree-do-projeto> && <comando-whitelisted>`. Cobre todas as variantes de quoting numa regex; cobre chains múltiplos (`&& A && B`); whitelist é um Set no JS, fácil de editar.
+Um único script Node.js intercepta toda call do Bash tool, prova em que **área** o comando roda, valida a chain inteira contra o whitelist daquela área, e retorna `allow` — ou se cala, devolvendo a decisão ao permission system normal (nunca nega).
 
-**Template canônico:** [`../install/hooks/auto-approve-worktree-bash.js`](../install/hooks/auto-approve-worktree-bash.js). Tem um placeholder `<PROJECT_PATH>` substituído na instalação pelo path real do projeto (ex: `projetos/igris`).
+**Template canônico:** [`../install/hooks/`](../install/hooks/) — dois hooks (`auto-approve-project-bash.mjs` e `auto-approve-project-powershell.mjs`) sobre uma política única em `lib/areas.mjs`, parametrizada por `PROJETO`/`SCRATCH`/`LEITURA` na instalação. Em máquina Windows os dois são necessários: a tool PowerShell responde por ~17% das chamadas e sofre a mesma quebra de matching.
+
+> ⚠️ **O hook não é só de worktree — e essa foi a lição cara.** A versão anterior (`auto-approve-project-bash.js`) só casava `cd <projeto>/.worktrees/…`. Mas a medição em dois projetos mostrou que a maioria das chamadas Bash roda no **root** (Igris: 648 root × 214 worktree; Ariadne: 534 × 227), e que ~70% delas começam com `cd`. Resultado: cobertura real de **8,7%–17,3%**, com o prompt aparecendo o tempo todo enquanto o hook "existia e estava instalado". Rode o roteiro de medição de [`./permissions.md §Roteiro de diagnóstico`](./permissions.md) antes de assumir que o seu está cobrindo.
+
+**Duas provas de localização.** O hook aceita `cd <área conhecida>` no início da chain **ou** o campo `cwd` do payload do `PreToolUse` quando não há `cd` — este segundo é o caso mais comum (`npm test`, `git add`) e o que a versão antiga não cobria. Sem nenhuma das duas, não aprova.
+
+**Quatro áreas, quatro políticas** (detalhe e rationale em [`./permissions.md`](./permissions.md)):
+
+| Área | Política |
+|---|---|
+| `<projeto>/.worktrees/…` | Descartável — destrutivo livre |
+| `<projeto>` (root) | Checkout real — **sem destrutivo**, pede |
+| Scratch (`/tmp`, temp do Claude) | Escrita livre |
+| Projetos irmãos | **Só leitura** |
 
 **Whitelist default** (dev típico + toolchain de build/test/migration):
 
-`git, node, npm, pnpm, npx, tsx, tsc, vitest, vite, eslint, prettier, ok-bridge, drizzle-kit, ls, cat, find, grep, head, sed, wc, pwd, mkdir, cp, mv, rm, touch, echo`
+`git, node, npm, pnpm, npx, tsx, tsc, vitest, vite, eslint, prettier, python, ls, cat, find, grep, rg, head, tail, sed, awk, jq, cut, tr, sort, uniq, wc, diff, xargs, echo, printf, date, test, seq, docker, curl, mkdir, cp, mv, rm, touch, tee, cmd`
 
 > O template aplica `commandBasename()` ao head de cada segmento, então binários invocados via path relativo (`node_modules/.bin/vitest` → `vitest`) casam o whitelist. Isso é **essencial**: tanto na Strategy B quanto via junction, o tooling roda como `node_modules/.bin/<bin>` (porque `pnpm exec` quebra em worktree). Sem o basename, cada chamada geraria prompt. Inclua na whitelist os bins reais do projeto (ex.: `ok-bridge`, `drizzle-kit` para projetos ok-data-bridge; `vite`/`vitest` para Vite).
 
@@ -203,7 +216,16 @@ Um único script Node.js intercepta toda call do Bash tool, faz regex contra o `
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/auto-approve-worktree-bash.js"
+            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/auto-approve-project-bash.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/auto-approve-project-powershell.mjs"
           }
         ]
       }
@@ -252,6 +274,10 @@ Resista à tentação de adicionar ao whitelist do hook (ou rule global):
 - `git reset --hard *` — afeta history, mesmo dentro da worktree pode destruir trabalho não-pusheado.
 
 Esses ficam pontuais — aprovados via diálogo quando necessário, ou rules específicas com path muito constrained (`Bash(curl -s http://localhost:*)`).
+
+> ⚠️ **"Não adicionar" não é mecanismo — `deny` é.** Se o projeto tem `Bash(git *)` no allow (a maioria tem), `git push --force` já está aprovado, e o whitelist do hook — que espelha as rules — herda a folga. Confiar na ausência de uma entrada é o erro: a proibição desta seção só vira real quando está em `permissions.deny`, que ganha do hook e de qualquer rule larga. Ver [`./permissions.md §A lista de "nunca"`](./permissions.md).
+>
+> O template canônico ainda faz uma segunda checagem por escopo: `push` e `filter-branch` nunca são auto-aprovados (nem na worktree, porque `push` atinge o remote), e no **root** também ficam de fora `reset --hard`, `clean -f`, `stash drop/clear`, `checkout`/`switch`/`restore` e `branch -D`. `git branch -d` (só apaga branch mergeada) continua livre — ele fecha o cleanup do §9.
 
 ### 6.5 Auditoria de permissões existentes
 
@@ -335,6 +361,12 @@ git worktree prune
 | Adicionar 8 variantes `Bash(cd <path> && *)` em settings.json | Não funcionam (matcher não expande `*` no inner); usar hook em vez disso |
 | Adicionar `Bash(cd <path> && <cmd> *)` por comando × 8 variantes | Funcionaria, mas vira 100+ rules; usar hook é dramaticamente mais limpo |
 | Editar `.claude/settings.json` esperando que recarregue mid-sessão | Só hooks recarregam ao vivo; rules exigem reload window |
+| Empilhar rules novas a cada prompt, sem medir | O sintoma parece "faltou regra" mas é **formato de comando** (`cd` no início); as regras novas também não vão casar. Medir é o passo 1 |
+| Hook que valida só os segmentos de `&&` | `git status; rm -rf ~` passa validando só o head. A chain inteira (`;`, `\|`, `\|\|`, newline) precisa ser validada |
+| Hook que compara path por substring/sufixo | `cd <projeto>/../../evil` é lido como "dentro do projeto". Canonicalize (resolva `..`, normalize drive) antes de comparar |
+| Hook que valida head mas não destino de escrita | `cp x ~/.claude/settings.json` passa porque o head é `cp` |
+| Confiar em "não está no allow" pra impedir comando perigoso | Qualquer rule larga (`Bash(git *)`) derrota isso. Use `permissions.deny` |
+| Dar escrita a projeto irmão pra "facilitar" trabalho cruzado | O artefato (spec/plano escrito lá, executado numa sessão de lá) é mais simples e mantém cada projeto sob as próprias regras |
 | Adicionar comando alto-risco ao whitelist do hook (`curl`, `npm install -g`, `git push`) | Hook auto-aprova qualquer chain com esses heads dentro de worktree — vetor de exploração se subagente for comprometido |
 | Despachar subagente esperando que `isolation: worktree` opere numa worktree nomeada existente | Esse mode cria worktree TEMPORÁRIA descartável em `.claude/worktrees/agent-<hash>`; bom só pra spike isolado, não pra trabalho continuado |
 | Rebase de `main` de dentro de uma worktree | Mexe na branch base de todas as worktrees ao mesmo tempo |
@@ -356,7 +388,10 @@ Pra o skill `update-config` (ou auditoria manual) rodar contra um projeto:
 
 ### Hook + permissões mínimas (§6.2, §6.3)
 
-- [ ] Existe `.claude/hooks/auto-approve-worktree-bash.js` com `<PROJECT_PATH>` substituído pelo path real (lowercase, slashes)
+- [ ] Existem `.claude/hooks/auto-approve-project-bash.mjs`, `auto-approve-project-powershell.mjs` e `lib/areas.mjs`, com `PROJETO` no path real (absoluto, lowercase, forward slashes, **com drive**) e `SCRATCH`/`LEITURA` preenchidos
+- [ ] **NÃO** existe mais `.claude/hooks/auto-approve-worktree-bash.js` registrado (versão obsoleta — cobre só worktree)
+- [ ] Cobertura medida com `hook-replay.mjs` está acima de ~90%, e as recusas restantes foram classificadas como legítimas
+- [ ] `permissions.deny` tem a lista de nunca (`git push --force`, `git reset --hard`, `git clean -f`, install global)
 - [ ] `.claude/settings.json` tem bloco `hooks.PreToolUse[].matcher: "Bash"` apontando pro script
 - [ ] **NÃO** existe mais o bloco antigo de 8 variantes `Bash(cd <path> && *)` em `permissions.allow` (resíduo obsoleto — remover)
 - [ ] Rules complementares presentes em `permissions.allow`:

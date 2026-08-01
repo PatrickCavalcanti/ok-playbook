@@ -34,7 +34,8 @@ Anotar internamente:
 - Pattern proposto pela skill.
 - Frequência (quantas vezes apareceu).
 - Categoria provável segundo [`../patterns/permissions.md §Recomendações por tipo de operação`](../patterns/permissions.md) — leitura, build, edição local, rede, install global, etc.
-- **Origem: o comando começa com `cd <...>/.worktrees/<...> && <cmd>`?** Se sim, o lever de fix **não é `permissions.allow`** (rules não casam compounds com `cd` — ver `worktree.md §6.1`), e sim a **whitelist do hook `auto-approve-worktree-bash.js`**. Comandos de build/test/exec/migration (`vite`, `vitest`, `ok-bridge`, `drizzle-kit`, etc.) só se resolvem lá. A skill `fewer-permission-prompts` (filtro read-only) corretamente os ignora pro allowlist — não force-os em `permissions.allow`; adicione o **basename** à whitelist do hook (ver §5 e §Escopo).
+- **Origem: o comando começa com `cd <path> && <cmd>`** — em `.worktrees/` **ou no root do projeto**? Se sim, o lever de fix **não é `permissions.allow`** (rules não casam compounds com `cd` — ver `worktree.md §6.1`), e sim o hook `auto-approve-project-bash.js`. Comandos de build/test/exec/migration (`vite`, `vitest`, `ok-bridge`, `drizzle-kit`, etc.) só se resolvem lá. A skill `fewer-permission-prompts` (filtro read-only) corretamente os ignora pro allowlist — não force-os em `permissions.allow`; adicione o **basename** à whitelist do hook (ver §5 e §Escopo).
+- **Antes de propor qualquer entrada, rode `node .claude/hooks/tools/medir-comandos.mjs` e `hook-replay.mjs --porques`.** É o que distingue "falta regra" de "o hook não entendeu o formato" — e evita empilhar entradas que nunca vão casar. Recusa por destino de escrita, por escrita em projeto irmão ou por `cd "$VAR"` é **legítima**: não vira allowlist, vira prompt mesmo.
 
 ### 2. Aplicar filtro de generalização
 
@@ -115,7 +116,7 @@ Insights são fila de discussão; não tomar ação automática.
 
 **Modifica:**
 - `.claude/settings.json` (ou `.claude/settings.local.json`) do projeto consumidor — apenas append/merge na lista `permissions.allow`.
-- `.claude/hooks/auto-approve-worktree-bash.js` — **apenas a `WHITELIST`** (Set de basenames), quando os prompts repetidos vêm de dentro de `.worktrees/` (compounds `cd <worktree> && <cmd>` que não casam em `permissions.allow`). Adicionar só basenames de baixo risco (build/test/lint/migration: `vite`, `vitest`, `ok-bridge`, `drizzle-kit`, etc.). Mesmo diff-antes-de-aplicar. NUNCA adicionar comandos de alto risco (`curl`, `npm install -g`, `git push`, `git reset --hard`) — ver `worktree.md §6.4`.
+- `.claude/hooks/auto-approve-project-bash.js` — **apenas os whitelists** (Sets de basenames) e, quando for o caso, a lista `LEITURA` de projetos irmãos. Adicionar só basenames de baixo risco (build/test/lint/migration: `vite`, `vitest`, `ok-bridge`, `drizzle-kit`, etc.). Mesmo diff-antes-de-aplicar. NUNCA adicionar comandos de alto risco (`curl` sem restrição de host, `npm install -g`, `git push`, `git reset --hard`) — ver `worktree.md §6.4`. Depois de qualquer mudança, **rodar `hook-test.mjs`**: os casos negativos são o que impede o hook de virar um `allow *`.
 - `<backlog-root>/permissions/` — cria registro de feedback quando houver o que registrar.
 - `<insights-root>/` — cria insight quando detectar padrão recorrente cross-sessão.
 

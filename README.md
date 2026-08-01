@@ -69,7 +69,10 @@ ok-playbook/
     ├── permissions-snippet.json     # permissões path-agnostic + bloco hooks pra .claude/settings.json
     ├── okplaybook-template.md       # template do manifesto OKPLAYBOOK.md
     └── hooks/                       # templates de PreToolUse hooks
-        └── auto-approve-worktree-bash.js  # hook canônico de auto-approve em worktree (substitui rules verbosas)
+        ├── auto-approve-project-bash.mjs        # hook de auto-approve (Bash)
+        ├── auto-approve-project-powershell.mjs  # idem, PowerShell (~17% das chamadas no Windows)
+        ├── lib/areas.mjs                        # política única: áreas, paths, comandos nativos
+        └── tools/                               # medir-comandos, hook-test(-powershell), hook-replay
 ```
 
 ## Como começar — leitura recomendada
@@ -163,7 +166,7 @@ Toda proposta upstream — independente do modo — gera arquivo de rastro em `<
 |---|---|
 | Patterns originais (code-design, worktree, feedback-loop, agent, subagent-dispatch) | ✅ migrados |
 | Patterns config harness (git, profiles, permissions) | ✅ extraídos; permissions ganhou seção sobre PreToolUse hooks como escape hatch |
-| Hook canônico de worktree (`install/hooks/auto-approve-worktree-bash.js`) | ✅ — substitui ~100 rules verbosas por 1 script; validado em uso real |
+| Hook canônico de permissões (`install/hooks/`, Bash + PowerShell) | ✅ — substitui ~100 rules verbosas por 1 script; cobre root + worktree + scratch + projetos irmãos; 95% de cobertura medida |
 | Patterns adicionais project-level (memory, superpowers-workflow) | ✅ extraídos |
 | Agents (docs-review, new-agent, playbook-audit, permissions-review, playbook-contribute) | ✅ — feedback-loop lazy; playbook-audit manual; permissions-review lazy no encerramento; playbook-contribute manual com 3 modos |
 | Templates (5: feedback, draft, insight, ARCHITECTURE, upstream-proposal) | ✅ migrados |

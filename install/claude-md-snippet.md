@@ -28,6 +28,7 @@ Este projeto consome o `ok-playbook` em `packages/ok-playbook/`. **Leia antes de
   - [`git.md`](packages/ok-playbook/patterns/git.md) — convenções de branches, commits, bloqueados
   - [`profiles.md`](packages/ok-playbook/patterns/profiles.md) — modos de operação canônicos
   - [`permissions.md`](packages/ok-playbook/patterns/permissions.md) — filosofia de `.claude/settings.json`
+  - [`command-forms.md`](packages/ok-playbook/patterns/command-forms.md) — **forma canônica de cada ação** (onde rodar, ler/escrever, shell, destrutivo); a coluna "evite" é a que custa prompt
   - [`memory.md`](packages/ok-playbook/patterns/memory.md) — tipologia de memórias persistentes do projeto
   - [`superpowers-workflow.md`](packages/ok-playbook/patterns/superpowers-workflow.md) — workflow superpowers + roteamento Opus/Sonnet
   - [`docs-structure.md`](packages/ok-playbook/patterns/docs-structure.md) — hierarquia `<docs-root>` + `_index.md` da arquitetura + ciclo de specs/planos
