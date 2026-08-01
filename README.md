@@ -5,24 +5,28 @@
 ## Instalação rápida
 
 ```bash
-pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.3.0
 pnpm exec ok-playbook init
 ```
 
-> Use sempre a **última tag publicada** (hoje `v0.2.1`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
+> Use sempre a **última tag publicada** (hoje `v0.3.0`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
 
 ### Atualizando uma instalação existente
 
-A dependência é pinada numa tag git, então `pnpm up` **não cruza versões** (a tag é fixa). Para subir de uma versão antiga para a nova, troque a tag e re-rode o `init`:
+A dependência é pinada numa tag git, então `pnpm up` **não cruza versões** (a tag é fixa). Atualizar é trocar a tag:
 
 ```bash
-pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1  # nova tag
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#<nova-tag>
 pnpm exec ok-playbook init   # idempotente — só atualiza o que mudou
 ```
 
-Depois, **verifique o drift** contra o canon novo: peça "**revalida o ok-playbook**" para invocar o agente [`playbook-audit`](agents/playbook-audit.md).
+**Use HTTPS**, não SSH: o Git Credential Manager já está autenticado e não exige setup.
 
-Detalhes em [`INSTALL.md`](./INSTALL.md).
+⚠️ **`init` não atualiza as peças copiadas** — `.claude/hooks/` (com `lib/` e `tools/`), skills, profiles e git-rules são cópias e precisam ser recopiadas à mão, com a parametrização reaplicada. Pular isso deixa o projeto com versão nova no manifesto e comportamento antigo.
+
+Com **vários consumidores**: atualize todos primeiro e **só então** rode a auditoria — peça "**revalida o ok-playbook**" ([`playbook-audit`](agents/playbook-audit.md)) em cada um. Auditar no meio da migração mistura "desatualizado" com "divergiu de propósito".
+
+Procedimento completo em [`INSTALL.md §Atualizando a versão`](./INSTALL.md).
 
 ## O que é
 
@@ -50,6 +54,7 @@ ok-playbook/
 │   ├── git.md                       # convenções de branches, commits, bloqueados
 │   ├── profiles.md                  # modos de operação canônicos (dev-early/stable/review)
 │   ├── permissions.md               # filosofia de .claude/settings.json
+│   ├── command-forms.md             # forma canônica de cada ação (reduz variedade → menos prompt)
 │   ├── memory.md                    # tipologia de memórias persistentes do projeto
 │   └── superpowers-workflow.md      # fluxo superpowers + roteamento Opus/Sonnet
 ├── agents/                          # protocolos agnósticos de agentes
@@ -103,7 +108,7 @@ Os agentes em [`agents/`](agents/) são implementações concretas dos papéis c
 A partir de v0.1.0, projetos externos consomem o playbook como dependência npm-style (não mais por cópia/vendoring). Veja [`INSTALL.md`](./INSTALL.md) para o caminho rápido:
 
 ```bash
-pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.3.0
 pnpm exec ok-playbook init
 ```
 
@@ -111,7 +116,7 @@ pnpm exec ok-playbook init
 
 `OKPLAYBOOK.md` é o **registro de auditoria** — qual versão foi instalada, paths customizados, próximos passos manuais (ver seção "O que ainda precisa ser feito manualmente" em `INSTALL.md` enquanto MVP).
 
-Para atualizar de uma versão antiga para a nova, troque a tag git e re-rode o init (`pnpm up` não cruza versões — a tag é fixa): `pnpm add git+ssh://...ok-playbook#<nova-tag> && pnpm exec ok-playbook init`. Em seguida, audite o drift contra o canon novo pedindo "**revalida o ok-playbook**" — invoca o agente [`playbook-audit`](agents/playbook-audit.md). Ver a seção [Atualizando uma instalação existente](#atualizando-uma-instalação-existente).
+Para atualizar, troque a tag git e re-rode o init — e **recopie as peças manuais** (hooks, skills, profiles), que o `init` não atualiza. Procedimento completo em [`INSTALL.md §Atualizando a versão`](./INSTALL.md) e resumo em [Atualizando uma instalação existente](#atualizando-uma-instalação-existente).
 
 ### Modo monorepo / workspace interno
 

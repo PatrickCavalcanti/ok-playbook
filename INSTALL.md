@@ -3,11 +3,11 @@
 ## Caminho rápido (recomendado)
 
 ```bash
-pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.3.0
 pnpm exec ok-playbook init
 ```
 
-> Use sempre a última tag publicada (hoje `v0.2.1`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
+> Use sempre a última tag publicada (hoje `v0.3.0`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
 
 O `init` é idempotente — rode quantas vezes quiser. Faz:
 
@@ -19,16 +19,51 @@ O `init` é idempotente — rode quantas vezes quiser. Faz:
 
 Customizar paths: edite `ok-playbook.config.json` depois. Re-rodar `init` não sobrescreve.
 
-## Atualizando
+## Atualizando a versão
 
-A dependência é pinada numa tag git, então `pnpm up` **não cruza versões** (a tag é fixa). Para subir de uma versão antiga para a nova, troque a tag e re-rode o `init`:
+### HTTPS, não SSH
+
+A forma canônica é **`git+https://`**. O Git Credential Manager do Windows já está autenticado para os repos da conta, então HTTPS funciona sem setup nenhum — enquanto SSH exige chave gerada e registrada.
 
 ```bash
-pnpm add git+ssh://git@github.com:PatrickCavalcanti/ok-playbook.git#v0.2.1  # nova tag
-pnpm exec ok-playbook init   # re-roda; idempotente, só atualiza o que mudou
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.3.0
 ```
 
-Depois, **verifique o drift** contra o canon novo: peça "**revalida o ok-playbook**" para invocar o agente `playbook-audit` (ver [`agents/playbook-audit.md`](agents/playbook-audit.md)).
+> ⚠️ Versões anteriores deste doc traziam `git+ssh://git@github.com:PatrickCavalcanti/…` — que além de exigir chave, é **URL malformada**: com o esquema `git+ssh://` o separador tem que ser `/`, não `:` (o `:` é forma scp-style, que só vale *sem* o esquema). Se você tentou instalar por esse comando e falhou, era isso.
+>
+> SSH (`git+ssh://git@github.com/PatrickCavalcanti/ok-playbook.git#v0.3.0`, com barra) continua válido para máquina com chave configurada. Em **CI** nenhuma das duas serve sozinha: repo privado exige um fine-grained PAT com leitura, exposto como secret.
+
+### O procedimento
+
+`pnpm up` **não sobe a versão** — a dependência está pinada numa tag, e tag é fixa. Atualizar é trocar a tag:
+
+```bash
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#<nova-tag>
+pnpm exec ok-playbook init    # idempotente; só mexe no que mudou
+```
+
+### O que o `init` NÃO atualiza
+
+Isto é o que deixa projeto silenciosamente desatualizado. O `init` mescla config, permissões e scaffolds — mas as peças da seção "O que ainda precisa ser feito manualmente" são **cópias**, e cópia não se atualiza sozinha:
+
+- `.claude/hooks/` — hooks, `lib/` e `tools/`. **Recopie de `node_modules/ok-playbook/install/hooks/`** e reaplique a parametrização (`PROJETO`, `SCRATCH`, `LEITURA`, whitelists). Depois rode `hook-test.mjs` e `hook-test-powershell.mjs`.
+- `.claude/skills/<agent>/SKILL.md`
+- `.claude/profiles/*.md` e `.claude/context/git-rules.md`
+
+Sintoma clássico de ter pulado esse passo: `OKPLAYBOOK.md` diz uma versão nova, mas o comportamento é o da antiga.
+
+### Ordem quando há vários consumidores
+
+**Atualize todos, depois audite.** Rodar `playbook-audit` com metade dos projetos numa versão e metade em outra produz um relatório de drift que mistura "está desatualizado" com "divergiu de propósito" — e o ruído torna o resultado inútil.
+
+Por projeto:
+
+1. `pnpm add …#<nova-tag>` + `pnpm exec ok-playbook init`
+2. Recopiar as peças manuais acima (hooks em especial) e reaplicar a parametrização
+3. Rodar as suites do hook
+4. Atualizar a versão em `OKPLAYBOOK.md`
+
+Só quando todos estiverem na mesma tag, peça "**revalida o ok-playbook**" em cada um — invoca o agente `playbook-audit` (ver [`agents/playbook-audit.md`](agents/playbook-audit.md)), que aí compara contra um canon único.
 
 ## Modo de contribuição upstream
 
