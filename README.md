@@ -73,6 +73,8 @@ ok-playbook/
     ├── claude-md-snippet.md         # bloco a inserir no CLAUDE.md do consumidor
     ├── permissions-snippet.json     # permissões path-agnostic + bloco hooks pra .claude/settings.json
     ├── okplaybook-template.md       # template do manifesto OKPLAYBOOK.md
+    ├── scripts/                     # scripts operacionais
+    │   └── worktree.mjs             # criar/fechar worktree (colisão, untracked, junction-safe)
     └── hooks/                       # templates de PreToolUse hooks
         ├── auto-approve-project-bash.mjs        # hook de auto-approve (Bash)
         ├── auto-approve-project-powershell.mjs  # idem, PowerShell (~17% das chamadas no Windows)

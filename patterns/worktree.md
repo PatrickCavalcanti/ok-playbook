@@ -81,6 +81,16 @@ Ex: branch `feature/visual-markdown-editor` → `.worktrees/visual-markdown-edit
 
 ### 5.1 Criação canônica
 
+**Use o script** — ele já resolve as etapas que custam (colisão de branch entre sessões paralelas, untracked que não atravessa, deps, e o cleanup seguro no Windows):
+
+```bash
+node scripts/worktree.mjs new <feature-name> [--plano docs/.../plano.md] [--dry-run]
+```
+
+Template em [`../install/scripts/worktree.mjs`](../install/scripts/worktree.mjs); extensão por projeto em `worktree.config.mjs` no root (base, prefixo de branch, arquivos a copiar, estratégia de deps, hooks `posCriar`/`preFechar`).
+
+O equivalente manual, para entender o que o script faz:
+
 ```bash
 git worktree add .worktrees/<feature-name> -b feature/<feature-name> main
 ```
@@ -326,7 +336,15 @@ Quando o trabalho cruza repos (ex: feature toca o projeto principal + um service
 
 ## 9. Cleanup
 
-Quando a feature foi mergeada (ou descartada):
+**Use o script** — a ordem aqui não é detalhe de conveniência, é o que evita apagar o `node_modules` da main:
+
+```bash
+node scripts/worktree.mjs close <feature-name> [--keep-branch] [--force] [--dry-run]
+```
+
+Ele confere trabalho não commitado e commits fora da base, **remove todo junction com `rmdir` antes** de encostar na worktree, e só então roda `git worktree remove` + `prune` + `git branch -d`. A branch é lida da própria worktree (`rev-parse --abbrev-ref HEAD`), não deduzida do nome — deduzir faz a checagem de merge apontar pra uma ref inexistente e **passar em silêncio**, que é a pior falha possível num comando destrutivo.
+
+O equivalente manual:
 
 ```bash
 # Branch ainda existe + worktree existe
