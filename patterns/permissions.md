@@ -35,6 +35,84 @@ Permissões apertadas demais geram prompts constantes de confirmação — o age
 
 ---
 
+## Rules de arquivo (`Read` / `Edit` / `Write`) — o outro eixo
+
+> ⚠️ **O resto deste doc é sobre shell (Bash/PowerShell), onde o problema é *forma do comando*. Aqui o problema é outro: *âncora de path*. Um pattern de arquivo sintaticamente plausível pode nunca casar com nada, silenciosamente — não há erro, log ou aviso. O sintoma é só o prompt continuar aparecendo.**
+
+### Edição nunca é liberada por "estar dentro do projeto"
+
+A [doc oficial](https://code.claude.com/docs/en/permissions) separa os três tipos:
+
+| Tipo | Aprovação necessária | "Não perguntar de novo" dura |
+|---|---|---|
+| Leitura (`Read`, `Grep`) | **Não**, dentro do working dir e `additionalDirectories` | — |
+| Bash | Sim, exceto read-only builtin | Permanente, por repo + comando |
+| **`Edit` / `Write`** | **Sim, sempre** | **Só até o fim da sessão** |
+
+Estar no working directory dá leitura livre, **nunca escrita**. Sem uma allow rule que case, todo edit pede aprovação — e o botão "allow all edits this session" expira ao fechar a sessão. Daí a percepção recorrente de "isso já funcionou antes e voltou a pedir": nunca funcionou por rule, funcionava por sessão.
+
+### Os quatro âncoras de path
+
+| Forma | Significado | Resolve para |
+|---|---|---|
+| `//path` | **Absoluto**, da raiz do filesystem | `/path` |
+| `~/path` | A partir do home | `<home>/path` |
+| `/path` | Relativo à **fonte do settings** | project root, ou cwd, ou `~/.claude/` — ver abaixo |
+| `path`, `./path` | Relativo ao cwd | `<cwd>/path` |
+
+> A doc é explícita: "A pattern like `/Users/alice/file` isn't an absolute path. The single leading slash anchors at the settings source, not the filesystem root."
+
+**No Windows, paths são normalizados pra POSIX antes do match**: `E:\Projetos\X` vira `/e/Projetos/X`. Portanto a **única** forma absoluta que casa é `//e/Projetos/X/**`.
+
+Todas estas são silenciosamente mortas:
+
+```jsonc
+"Edit(e:/Projetos/X/**)"      // relativo ao cwd → <cwd>/e:/Projetos/X/** — não existe
+"Edit(e:\\Projetos\\X\\**)"   // idem, com separador que nem sobrevive à normalização
+"Edit(/e/Projetos/X/**)"      // relativo à fonte do settings → <project root>/e/Projetos/X/**
+"Edit(//E/Projetos/X/**)"     // drive maiúsculo; a normalização produz minúsculo
+```
+
+E esta é a que funciona:
+
+```jsonc
+"Edit(//e/Projetos/X/**)"
+```
+
+**Sintoma diagnóstico:** se `Read` nunca incomoda mas `Edit` sempre pede, não conclua que "leitura está liberada e escrita não" — leitura é livre por padrão no working dir, então uma rule `Read` quebrada **não produz sintoma nenhum**. O allowlist parece funcionar quando na verdade metade dele é decorativo. Confira as rules de `Read` também: se elas não estão na forma `//`, as de `Edit` ao lado provavelmente também não estão.
+
+### Onde a rule mora muda o que ela casa
+
+Para o âncora `/path`, a "fonte do settings" varia:
+
+| Rule definida em | `/path` resolve para |
+|---|---|
+| `.claude/settings.json` (projeto) | `<project root>/path` |
+| `.claude/settings.local.json` | `<cwd original da sessão>/path` |
+| `~/.claude/settings.json` (usuário) | `~/.claude/path` |
+
+Duas consequências práticas:
+
+1. **Em sessão de worktree, `settings.local.json` ancora na worktree**, não no root do repo — uma rule `Edit(/src/**)` compartilhada casa o `src/` daquela worktree, que costuma ser o desejado.
+2. **Se `settings.local.json` for versionado, a worktree carrega a cópia do commit dela.** Corrigir uma rule na `main` não chega na worktree até commitar e a branch puxar. Por isso rules de path absoluto (`//e/...`) que precisam valer em toda sessão do projeto ficam melhor em `~/.claude/settings.json`: carregam em qualquer cwd, main ou worktree, sem depender de commit.
+
+### A política de áreas não tem metade de arquivo
+
+A tabela de [§Quatro áreas, quatro políticas](#quatro-áreas-quatro-políticas) — worktree descartável, root sem destrutivo, scratch livre, irmãos só-leitura — é implementada **só no hook, e o hook só tem matcher `Bash` e `PowerShell`**. As tools `Edit` e `Write` não passam por ele.
+
+Ou seja: a política existe pra `rm` e não existe pra `Edit`. Fechar essa metade é decisão de projeto, e há duas saídas:
+
+| Saída | Como | Trade-off |
+|---|---|---|
+| Allow rules de path | `Edit(//<abs>/**)` + `Write(//<abs>/**)` no settings do usuário | Explícito e auditável; exige path absoluto por máquina |
+| `defaultMode: "acceptEdits"` | Em `settings.json` | Cobre working dir + `additionalDirectories` sem manter lista de paths. **Mas**: em sessão iniciada pela extensão do VS Code, "the extension resolves the starting mode instead" — o `defaultMode` pode ser ignorado |
+
+Em máquina Windows com VS Code, a allow rule é a via confiável.
+
+> Escrita em **paths protegidos** (`.git/`, `.claude/`) pode continuar pedindo confirmação mesmo sob allow rule — é proteção separada, e é desejável mantê-la.
+
+---
+
 ## Casos especiais
 
 ### Worktree no Windows: por que rules não bastam
@@ -75,6 +153,8 @@ Bash(cmd //c "mklink *")
 ```
 
 O mesmo vale para paths de worktree, argumentos de teste, DATABASE_URL inline, etc. Qualquer detalhe único que muda entre execuções deve virar `*`.
+
+**Cuidado adicional em rules de arquivo:** generalizar o path não basta se o âncora estiver errado. A UI salva `Edit(e:\<proj>\src\a.ts)`; trocar o arquivo por `**` produz `Edit(e:\<proj>\src\**)`, que **continua morto** — falta o `//` e a normalização POSIX. A forma correta é `Edit(//e/<proj>/src/**)`. Ver [§Rules de arquivo](#rules-de-arquivo-read--edit--write--o-outro-eixo).
 
 ---
 
@@ -131,6 +211,8 @@ O template canônico não trata todo diretório igual. A distinção que importa
 | `<projeto>` (root) | Checkout de verdade — **sem destrutivo**, pede confirmação |
 | Scratch (`/tmp`, temp do Claude) | Descartável por definição — escrita livre |
 | Projetos irmãos | **Só leitura** — escrita sempre pede |
+
+> ⚠️ **Esta tabela vale para shell.** O hook tem matcher `Bash` e `PowerShell`; `Edit` e `Write` não passam por ele e seguem as rules de path — ver [§Rules de arquivo](#rules-de-arquivo-read--edit--write--o-outro-eixo).
 
 A área de leitura não é uma restrição técnica, é um padrão de trabalho: **trabalho que cruza pra um projeto irmão se resolve com um artefato, não com acesso.** Leia à vontade (o irmão tem os próprios `CLAUDE.md`, docs e convenções — dá pra entender o contexto inteiro sem escrever nada), escreva **uma** spec ou plano completo lá, e execute numa sessão aberta dentro daquele projeto, sob as regras dele. A escrita desse único arquivo pede permissão, e o prompt vira checkpoint útil em vez de fricção.
 
@@ -252,3 +334,48 @@ O hook é feito para ser editado — a whitelist envelhece junto com o projeto. 
 - **Valide destino de escrita, não só o head.** `cp`, `mv`, `mkdir`, `touch`, `sed -i` e alvos de `>`/`>>` precisam cair numa área onde escrever é permitido — senão `cp x ~/.claude/settings.json` passa só porque o head é `cp`.
 - **Sem prova de onde está, não aprove.** O payload do `PreToolUse` traz `cwd`; se não vier e não houver `cd` explícito, falhe pro lado seguro.
 - **Não duplicar lógica do permission system.** Hook é pra casos onde rule não consegue expressar; pra approve simples (`Bash(git *)` etc), rule continua certa.
+
+---
+
+## Anexo: prompt de auditoria de rules de arquivo
+
+Cole numa sessão aberta **dentro do projeto a corrigir**. Project-agnostic — descobre os paths sozinho.
+
+````text
+Audite as permission rules de ARQUIVO (Read/Edit/Write) deste projeto. Contexto:
+descobrimos que patterns de path com âncora errado morrem silenciosamente — não há
+erro nem log, o único sintoma é o prompt de aprovação continuar aparecendo.
+
+1. LEIA a doc oficial antes de concluir qualquer coisa — não vá de memória:
+   https://code.claude.com/docs/en/permissions
+   Confirme lá: (a) a tabela de quais tools exigem aprovação; (b) a tabela de
+   âncoras de path (`//abs`, `~/home`, `/fonte-do-settings`, `relativo ao cwd`);
+   (c) a normalização de path no Windows.
+
+2. LEIA os três settings que se aplicam a este projeto:
+   .claude/settings.json, .claude/settings.local.json, e o settings do usuário
+   (~/.claude/settings.json ou %USERPROFILE%\.claude\settings.json).
+
+3. CLASSIFIQUE cada rule de Read/Edit/Write como VIVA ou MORTA, mostrando para
+   onde cada pattern morto resolve de fato. Suspeitos típicos no Windows:
+   `X(c:/...)`, `X(c:\\...)`, `X(/c/...)` e drive maiúsculo — todos mortos.
+   A única forma absoluta que casa é `//c/...` com drive minúsculo.
+   Atenção: rules `Read` mortas não produzem sintoma (leitura já é livre no
+   working dir), então não use "leitura funciona" como prova de que estão certas.
+
+4. VERIFIQUE se existe alguma allow rule de Edit/Write cobrindo o código do
+   projeto. Se não existir, todo edit pede aprovação a cada sessão — é o default,
+   não um bug de configuração.
+
+5. PROPONHA o diff antes de aplicar, respondendo:
+   - quais rules mortas remover ou converter para a forma `//`;
+   - se a cobertura de Edit/Write deve ser o projeto inteiro ou só subdiretórios;
+   - em qual arquivo cada rule deve morar. Lembre que `settings.local.json`
+     versionado viaja para worktrees pelo commit, enquanto o settings do usuário
+     vale em qualquer cwd imediatamente.
+
+6. Depois de aplicar, VALIDE o JSON de cada arquivo tocado e avise que rules não
+   recarregam mid-sessão — precisa de reload window para entrar em vigor.
+
+Não invente sintaxe: se a doc não confirmar uma forma, diga que não confirmou.
+````
