@@ -1,8 +1,18 @@
-# ok-playbook — Include para CLAUDE.md do consumidor
+<!--
+  ok-playbook — Include para o CLAUDE.md do consumidor.
 
-> Este arquivo é referenciado pelo `CLAUDE.md` do projeto consumidor via `@node_modules/ok-playbook/install/claude-md-include.md`. Não copie nem cole — o consumidor importa via referência. Atualizações chegam via `pnpm up ok-playbook`.
+  O CLAUDE.md do projeto importa este arquivo por referência (@<playbook-root>install/claude-md-include.md).
+  Não copie e cole o conteúdo: uma cópia inline não recebe atualizações do playbook,
+  e o drift é silencioso — ninguém percebe que parou de acompanhar.
 
----
+  Este bloco é comentário HTML de propósito: tudo abaixo dele é importado
+  literalmente pro contexto da sessão, então nada aqui pode falar com o
+  mantenedor do playbook em vez de falar com o agente.
+
+  <playbook-root> resolve via `playbookRoot` no ok-playbook.config.json do
+  consumidor (default: node_modules/ok-playbook/). Nunca hardcode o caminho
+  de instalação neste arquivo — ele varia por projeto (npm, submódulo, workspace).
+-->
 
 ## Antes de começar
 
@@ -10,15 +20,15 @@ Qual o modo de operação desta sessão? **dev-early**, **dev-stable** ou **revi
 
 Responda com o número ou nome. Se não responder, assumir **dev-early**.
 
-Detalhes: [`patterns/profiles.md`](../patterns/profiles.md). Regras git: [`patterns/git.md`](../patterns/git.md). Permissões: [`patterns/permissions.md`](../patterns/permissions.md).
+Detalhes: `<playbook-root>patterns/profiles.md`. Regras git: `<playbook-root>patterns/git.md`. Permissões: `<playbook-root>patterns/permissions.md`.
 
 ---
 
 ## ok-playbook (padrões de desenvolvimento)
 
-Este projeto consome o `ok-playbook` instalado em `node_modules/ok-playbook/`. **Leia antes de qualquer trabalho de arquitetura, agentes ou subagentes:**
+Este projeto consome o `ok-playbook`. **Onde ele está instalado é `<playbook-root>`, resolvido via `ok-playbook.config.json`** — leia o config antes de tentar abrir qualquer arquivo do playbook. **Leia os patterns antes de qualquer trabalho de arquitetura, agentes ou subagentes:**
 
-- **Patterns (princípios agnósticos):** [`node_modules/ok-playbook/patterns/`](../patterns/)
+- **Patterns (princípios agnósticos):** `<playbook-root>patterns/`
   - `code-design.md` — 5 camadas, naming, ponto de contato, fractal, ARCHITECTURE.md
   - `worktree.md` — quando criar worktree, permissões do Claude Code
   - `feedback-loop.md` — produtor → backlog → processador → atualização
@@ -26,13 +36,14 @@ Este projeto consome o `ok-playbook` instalado em `node_modules/ok-playbook/`. *
   - `subagent-dispatch.md` — política de modelos, granularidade, isolamento
   - `git.md` — convenções de branches, commits, bloqueados
   - `profiles.md` — modos de operação canônicos
-  - `permissions.md` — filosofia de `.claude/settings.json`
+  - `permissions.md` — filosofia de `.claude/settings.json`; rules de shell (forma do comando) **e** de arquivo (âncora de path)
+  - `command-forms.md` — **forma canônica de cada ação** (onde rodar, ler/escrever, shell, destrutivo); a coluna "evite" é a que custa prompt
   - `memory.md` — tipologia de memórias persistentes do projeto
   - `superpowers-workflow.md` — workflow superpowers + roteamento Opus/Sonnet
   - `docs-structure.md` — hierarquia `<docs-root>` + `_index.md` da arquitetura + ciclo de specs/planos
 
-- **Agents agnósticos:** [`node_modules/ok-playbook/agents/`](../agents/) — `docs-review`, `new-agent`, `playbook-audit`, `permissions-review`, `playbook-contribute`
-- **Templates:** [`node_modules/ok-playbook/templates/`](../templates/) — feedback, draft, insight, ARCHITECTURE, `_index`
+- **Agents agnósticos:** `<playbook-root>agents/` — `docs-review`, `new-agent`, `playbook-audit`, `permissions-review`, `playbook-contribute`
+- **Templates:** `<playbook-root>templates/` — feedback, draft, insight, ARCHITECTURE, `_index`
 
 ### Resolução de placeholders deste projeto
 
@@ -42,6 +53,7 @@ Mapeamento canônico:
 
 | Placeholder | Campo em `ok-playbook.config.json` |
 |---|---|
+| `<playbook-root>` | `playbookRoot` (opcional; default `node_modules/ok-playbook/`) |
 | `<docs-root>` | `paths.docs` |
 | `<arch-root>` | `paths.arch` |
 | `<agents-root>` | `paths.agents` |
@@ -52,7 +64,7 @@ Mapeamento canônico:
 
 Antes de qualquer trabalho que toque um placeholder, leia `ok-playbook.config.json` e substitua mentalmente. Se o arquivo não existir, peça pro usuário rodar `pnpm exec ok-playbook init` antes de prosseguir.
 
-**Paths sem `<…>`** (ex.: `templates/feedback.md`, `agents/docs-review.md`, `patterns/permissions.md`) que aparecem em docs do canon são relativos ao **root do playbook em `node_modules/ok-playbook/`**, não ao root do projeto consumidor. Semântica completa de cada placeholder em [`patterns/docs-structure.md`](../patterns/docs-structure.md).
+**Paths sem `<…>`** (ex.: `templates/feedback.md`, `agents/docs-review.md`, `patterns/permissions.md`) que aparecem em docs do canon são relativos ao **root do playbook** — ou seja, `<playbook-root>`, não o root do projeto consumidor. Semântica completa de cada placeholder em `<playbook-root>patterns/docs-structure.md`.
 
 ### Regras invariantes vindas do playbook
 
@@ -63,7 +75,7 @@ Antes de qualquer trabalho que toque um placeholder, leia `ok-playbook.config.js
 
 ### Memórias persistentes deste projeto
 
-Tipologia canônica (detalhes em [`patterns/memory.md`](../patterns/memory.md)):
+Tipologia canônica (detalhes em `<playbook-root>patterns/memory.md`):
 
 | Tipo | Quando salvar |
 |---|---|
@@ -80,7 +92,7 @@ Anti-pattern: "salva esta lista de PRs". Resposta correta: perguntar o que foi *
 
 ### Workflow superpowers — roteamento de modelos
 
-Fluxo: `brainstorming` → `writing-plans` → `subagent-driven-development` (ou `executing-plans` em sessão separada). Detalhes em [`patterns/superpowers-workflow.md`](../patterns/superpowers-workflow.md).
+Fluxo: `brainstorming` → `writing-plans` → `subagent-driven-development` (ou `executing-plans` em sessão separada). Detalhes em `<playbook-root>patterns/superpowers-workflow.md`.
 
 Roteamento fixo de modelos (não avaliar complexidade da task):
 
@@ -102,7 +114,7 @@ Substitui a seção "Model Selection" do skill `subagent-driven-development` que
 
 ### Registro de feedback de sessão
 
-Toda sessão neste projeto registra fricções de forma estruturada, seguindo o padrão de [`patterns/feedback-loop.md`](../patterns/feedback-loop.md).
+Toda sessão neste projeto registra fricções de forma estruturada, seguindo o padrão de `<playbook-root>patterns/feedback-loop.md`.
 
 **Gatilho (lazy):** o arquivo de feedback é criado **somente no primeiro feedback registrado** — não no boot da sessão. Sessão sem fricção real não gera arquivo.
 
@@ -133,8 +145,8 @@ Prompts de permissão repetidos durante a sessão (mesmo comando travando o agen
 
 Sem prompts repetidos, **não disparar nada** — não comentar, não perguntar.
 
-**O que `permissions-review` faz:** delega o escaneamento à skill built-in `fewer-permission-prompts`, aplica o filtro de generalização de [`patterns/permissions.md`](../patterns/permissions.md), mostra diff e aplica em `settings.json` (ou `settings.local.json`) só com OK do usuário. Detalhes em [`agents/permissions-review.md`](../agents/permissions-review.md).
+**O que `permissions-review` faz:** delega o escaneamento à skill built-in `fewer-permission-prompts`, aplica o filtro de generalização de `<playbook-root>patterns/permissions.md`, mostra diff e aplica em `settings.json` (ou `settings.local.json`) só com OK do usuário. Detalhes em `<playbook-root>agents/permissions-review.md`.
 
 Também pode ser invocado manualmente ("revisa permissões da sessão").
 
-Manifesto de instalação: [`OKPLAYBOOK.md`](../../OKPLAYBOOK.md) no root do projeto (gerado pelo `ok-playbook init`).
+Manifesto de instalação: `OKPLAYBOOK.md` no root do projeto (gerado pelo `ok-playbook init`).

@@ -15,6 +15,10 @@
       "description": "Versão do ok-playbook em uso. Atualizada pelo CLI quando init é re-executado contra versão mais nova.",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-z0-9.-]+)?$"
     },
+    "playbookRoot": {
+      "type": "string",
+      "description": "Resolve <playbook-root>: onde o playbook está instalado neste projeto, relativo ao root do consumidor. Opcional — omitido significa 'node_modules/ok-playbook/'. Defina quando o playbook vier por submódulo ou workspace (ex.: 'packages/ok-playbook/'), senão todo link do claude-md-include aponta pra um path que não existe."
+    },
     "paths": {
       "type": "object",
       "description": "Mapeamento de placeholders do playbook para paths reais deste projeto. Todos relativos ao root do projeto consumidor; devem ser diretórios terminados em '/'.",

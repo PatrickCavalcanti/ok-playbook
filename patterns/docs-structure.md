@@ -94,6 +94,14 @@ Princípio chave: **todos os `<*-root>` são parentes de `<docs-root>`**. Não t
 | `<drafts-root>` | `<docs-root>/_drafts/` | Rascunhos de novos agentes |
 | `<insights-root>` | `<docs-root>/insights/` | Insights de evolução + upstream-proposals |
 
+`<playbook-root>` é o único placeholder que **não** vive sob `<docs-root>` — aponta pra fora do projeto consumidor:
+
+| Placeholder | Default | Significado |
+|---|---|---|
+| `<playbook-root>` | `node_modules/ok-playbook/` | Onde o playbook está instalado. Varia por forma de consumo: npm, submódulo (`packages/ok-playbook/`), workspace |
+
+Resolve via `playbookRoot` no `ok-playbook.config.json`, campo opcional. **Nunca hardcode o caminho de instalação em doc do canon** — um link `node_modules/ok-playbook/patterns/x.md` num projeto que consome por submódulo aponta pra nada, e falha em silêncio: markdown quebrado não emite erro, só deixa o agente sem a doc.
+
 **Defaults são overridáveis.** Projeto pode escolher outros paths em `OKPLAYBOOK.md §Paths customizados` — mas o canon recomenda os defaults para coerência cross-projeto.
 
 ---
