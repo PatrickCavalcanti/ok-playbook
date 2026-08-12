@@ -94,7 +94,7 @@ Substitui a seção "Model Selection" do skill `subagent-driven-development` que
 
 **Não aplicar quando:** usuário pede review por task explícito; task crítica marcada (🚨); plano sem fases com menos de 5 tasks.
 
-**Paralelismo:** sempre oferecer paralelismo quando o plano permitir. Classificar tasks como sequenciais (dependência de output) vs paralelas (arquivos disjuntos). Apresentar dispatch plan e pedir OK antes da fase. Skill: `superpowers:dispatching-parallel-agents`. Em dúvida, sequencializar.
+**Paralelismo:** sempre oferecer paralelismo quando o plano permitir. Classificar tasks como sequenciais (dependência de output) vs paralelas (arquivos disjuntos). O dispatch plan é apresentado **uma vez, para o plano inteiro, antes do primeiro dispatch** — aprovado o mapa, executar todas as fases sem novo OK, reportando entre fases. Parar só por: BLOCKED de subagente, review/teste que exige mudar plano ou spec, classificação errada de forma arriscada, ou ação destrutiva/fora de escopo. Em **fase paralela** o implementer não commita (índice do `.git` é compartilhado): entrega report com paths + mensagem, e o controller commita com `git commit -q -m "msg" --only -- <paths>` sem ler diff. Skill: `superpowers:dispatching-parallel-agents`. Em dúvida, sequencializar.
 
 ### Registro de feedback de sessão
 
