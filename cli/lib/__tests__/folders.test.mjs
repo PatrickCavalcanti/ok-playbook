@@ -24,6 +24,7 @@ test("scaffoldFolders cria 5 pastas-base com templates", () => {
     assert.ok(existsSync(join(tmp, "docs/agent-feedback/_template.md")));
     assert.ok(existsSync(join(tmp, "docs/_drafts/_template.md")));
     assert.ok(existsSync(join(tmp, "docs/insights/_template.md")));
+    assert.ok(existsSync(join(tmp, "docs/pendencias/_template.md")));
     assert.ok(existsSync(join(tmp, "docs/superpowers/drafts/.gitkeep")));
     assert.ok(existsSync(join(tmp, "docs/superpowers/specs/done/.gitkeep")));
     assert.ok(existsSync(join(tmp, "docs/superpowers/plans/done/.gitkeep")));

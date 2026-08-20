@@ -25,5 +25,6 @@ export function defaultPaths() {
     backlog: "docs/agent-feedback/",
     drafts: "docs/_drafts/",
     insights: "docs/insights/",
+    pendencias: "docs/pendencias/",
   };
 }

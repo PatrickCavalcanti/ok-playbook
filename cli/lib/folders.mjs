@@ -36,6 +36,14 @@ export function scaffoldFolders(projectRoot, { paths, pkgRoot }) {
     join(pkgRoot, "templates", "insight.md"),
     join(projectRoot, paths.insights, "_template.md"),
   );
+  // <pendencias-root> (dev-process.md §9) — path opcional; readConfig preenche o
+  // default quando o config é anterior a 0.4.
+  if (paths.pendencias) {
+    copyIfMissing(
+      join(pkgRoot, "templates", "pendencias.template.md"),
+      join(projectRoot, paths.pendencias, "_template.md"),
+    );
+  }
 
   for (const sub of ["drafts", "specs/done", "plans/done"]) {
     writeIfMissing(join(projectRoot, paths.superpowers, sub, ".gitkeep"), "");

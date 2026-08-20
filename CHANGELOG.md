@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.2 (2026-08-20)
+
+O `init` passa a **scaffoldar `<pendencias-root>`** — a 0.4.0 publicou o
+placeholder no schema/docs mas o CLI não o conhecia: `pnpm add` + `init` num
+projeto instalado deixava o pattern apontando para pasta inexistente.
+
+### Mudanças
+- **`cli/lib/paths.mjs`** — `pendencias: "docs/pendencias/"` nos defaults.
+- **`cli/lib/config.mjs`** — `readConfig` preenche em memória os paths
+  **opcionais** ausentes (hoje só `pendencias`): config anterior a 0.4 continua
+  válido e o `init` scaffolda a pasta nova **sem `--force`** e sem reescrever o
+  config do consumidor.
+- **`cli/lib/folders.mjs`** — copia `templates/pendencias.template.md` para
+  `<pendencias-root>/_template.md` (só se ausente, como os demais).
+- Testes: 29 casos (3 novos), mais prova por execução: `init` num projeto com
+  config 0.3 cria a pasta e preserva o config.
+
 ## 0.4.1 (2026-08-20)
 
 Correção do sinal de atenção (`dev-process.md §10`, `claude-md-include.md`):

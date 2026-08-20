@@ -99,6 +99,25 @@ test("readConfig throws when paths incomplete", () => {
   }
 });
 
+test("readConfig preenche paths opcionais ausentes (config anterior a 0.4 sem pendencias)", () => {
+  const tmp = makeTmp();
+  try {
+    const antigo = {
+      version: "0.3.0",
+      paths: {
+        docs: "docs/", arch: "docs/project-architecture/", agents: "docs/project-architecture/agents/",
+        superpowers: "docs/superpowers/", backlog: "docs/agent-feedback/", drafts: "docs/_drafts/", insights: "docs/insights/",
+      },
+    };
+    writeFileSync(join(tmp, "ok-playbook.config.json"), JSON.stringify(antigo));
+    const cfg = readConfig(tmp);
+    assert.equal(cfg.paths.pendencias, "docs/pendencias/", "default em memória; init passa a scaffoldar sem --force");
+    assert.equal(cfg.paths.docs, "docs/");
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test("configExists returns true/false correctly", () => {
   const tmp = makeTmp();
   try {

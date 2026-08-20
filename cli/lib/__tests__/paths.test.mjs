@@ -38,8 +38,9 @@ test("findProjectRoot throws if no package.json found", () => {
   }
 });
 
-test("defaultPaths returns canonical 7 paths", () => {
+test("defaultPaths returns canonical 8 paths", () => {
   const p = defaultPaths();
+  assert.equal(p.pendencias, "docs/pendencias/");
   assert.equal(p.docs, "docs/");
   assert.equal(p.arch, "docs/project-architecture/");
   assert.equal(p.agents, "docs/project-architecture/agents/");

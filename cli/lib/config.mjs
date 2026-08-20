@@ -30,6 +30,13 @@ export function readConfig(projectRoot) {
   if (missing.length > 0) {
     throw new Error(`${CONFIG_FILENAME} sem paths obrigatórios: ${missing.join(", ")}. Rode 'ok-playbook init --force' para reescrever.`);
   }
+  // Paths OPCIONAIS (adicionados depois da 1ª instalação) recebem o default em
+  // memória quando ausentes — config antigo continua válido e o `init` passa a
+  // scaffoldar a pasta nova sem exigir --force. Hoje: `pendencias` (0.4.x).
+  const defaults = defaultPaths();
+  for (const k of Object.keys(defaults)) {
+    if (!REQUIRED_PATH_KEYS.includes(k) && !parsed.paths[k]) parsed.paths[k] = defaults[k];
+  }
   return parsed;
 }
 
