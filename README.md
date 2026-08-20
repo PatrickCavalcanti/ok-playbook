@@ -5,11 +5,11 @@
 ## Instalação rápida
 
 ```bash
-pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.3.0
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.4.0
 pnpm exec ok-playbook init
 ```
 
-> Use sempre a **última tag publicada** (hoje `v0.3.0`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
+> Use sempre a **última tag publicada** (hoje `v0.4.0`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
 
 ### Atualizando uma instalação existente
 
@@ -110,7 +110,7 @@ Os agentes em [`agents/`](agents/) são implementações concretas dos papéis c
 A partir de v0.1.0, projetos externos consomem o playbook como dependência npm-style (não mais por cópia/vendoring). Veja [`INSTALL.md`](./INSTALL.md) para o caminho rápido:
 
 ```bash
-pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.3.0
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.4.0
 pnpm exec ok-playbook init
 ```
 

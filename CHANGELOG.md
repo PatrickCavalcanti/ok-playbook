@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.4.0 (2026-08-20)
+
+O processo de trabalho vira canon: **`patterns/dev-process.md`**, destilado de um
+dossiê de 7 execuções reais (~134 erros de plano catalogados; a hipótese "o plano
+erra na costura" foi refutada — costura era 27% dos erros e 1 de ~19 críticos)
+mais uma rodada de 4 sessões operando o processo (tempo ativo 1h28–4h16 contra
+8–11h de relógio). Cada regra carrega o caso medido que a paga.
+
+### Mudanças
+- **`patterns/dev-process.md`** (novo) — quatro fluxos por tipo de solicitação
+  (ajuste pontual / funcionalidade / processo / bug) + gatilho de risco de duas
+  perguntas; escrita do plano (o planejador **abre o que o plano toca** — erro de
+  costura mora na fronteira do não-lido); execução (entrega no fim do plano;
+  teste só do que a fase escreveu; suíte global **só via script** com baseline;
+  teste com banco fora por padrão; TDD não obrigatório); **review do conjunto
+  como gate da entrega** com prompt dirigido das oito formas de defeito
+  invisíveis por fase (achou o crítico em 7 de 7) + regras de frescor; prompt de
+  dispatch (passo zero, pergunta de julgamento obrigatória, divergir-e-relatar,
+  proibições fixas de git destrutivo/espera em background/artefato no tree);
+  estado da main (`SUJO:`/commit de abertura — main suja é commit pendente);
+  contrato `OK`/`SUJO:`/`FALTA:` dos scripts de processo; **entrega ≠ merge**
+  (merge só a pedido, avaliado, sem rebase por reflexo); `<pendencias-root>`;
+  **sinal de atenção** (▶/❓/📖 na última linha de toda resposta); limite de
+  sessão ("continua" não responde pergunta pendente).
+- **`templates/pendencias.template.md`** (novo) — pendência ≠ insight; um
+  arquivo por sessão/plano, primeira coluna = área, registro no ato.
+- **`patterns/docs-structure.md`** + **`install/ok-playbook.config.schema.json`**
+  — `<pendencias-root>` no layout e no schema (`paths.pendencias`, **opcional**:
+  instalações existentes seguem válidas).
+- **`patterns/superpowers-workflow.md`** — roteamento por **papel** (modelos são
+  o mapeamento atual, configurável por projeto; o invariante é a assimetria);
+  cadência de testes/reviews aponta para o dev-process.
+- **`patterns/subagent-dispatch.md`** — §6.1 o gatilho da discovery deixa de ser
+  "spec veio de fora" e vira "o plano cita o que não foi aberto nesta sessão";
+  §6.3 prompt do subagente completo (passo zero, julgamento, exceção autorizada,
+  divergir-e-relatar, proibições fixas); §11 review do conjunto vira MUST-gate e
+  "nenhum merge sem pedido" entra no checklist.
+- **`install/claude-md-include.md`** — seção "Processo de desenvolvimento
+  (dev-process)" com o essencial que vale em toda sessão dos consumidores.
+
 ## 0.3.0 (2026-08-01)
 
 Prompt de permissão constante: a causa era **formato de comando**, não falta de regra. Diagnóstico feito no Ariadne, medido de forma independente no Igris, e portado pra cá. Cobertura do hook: **8,7% → 95%** (Igris).

@@ -1,6 +1,6 @@
 {
   "name": "ok-playbook",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Canon vivo de padroes da OK para arquitetura de software e colaboracao humano-IA.",
   "type": "module",
   "bin": {
