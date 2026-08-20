@@ -39,7 +39,8 @@ Este projeto consome o `ok-playbook`. **Onde ele está instalado é `<playbook-r
   - `permissions.md` — filosofia de `.claude/settings.json`; rules de shell (forma do comando) **e** de arquivo (âncora de path)
   - `command-forms.md` — **forma canônica de cada ação** (onde rodar, ler/escrever, shell, destrutivo); a coluna "evite" é a que custa prompt
   - `memory.md` — tipologia de memórias persistentes do projeto
-  - `superpowers-workflow.md` — workflow superpowers + roteamento Opus/Sonnet
+  - `superpowers-workflow.md` — workflow superpowers + roteamento por papel
+  - `dev-process.md` — **o processo de trabalho**: quatro fluxos, plano, reviews dirigidos, scripts de processo, entrega, pendências, sinal de atenção
   - `docs-structure.md` — hierarquia `<docs-root>` + `_index.md` da arquitetura + ciclo de specs/planos
 
 - **Agents agnósticos:** `<playbook-root>agents/` — `docs-review`, `new-agent`, `playbook-audit`, `permissions-review`, `playbook-contribute`
@@ -61,6 +62,7 @@ Mapeamento canônico:
 | `<backlog-root>` | `paths.backlog` |
 | `<drafts-root>` | `paths.drafts` |
 | `<insights-root>` | `paths.insights` |
+| `<pendencias-root>` | `paths.pendencias` (opcional; default `docs/pendencias/`) |
 
 Antes de qualquer trabalho que toque um placeholder, leia `ok-playbook.config.json` e substitua mentalmente. Se o arquivo não existir, peça pro usuário rodar `pnpm exec ok-playbook init` antes de prosseguir.
 
@@ -106,11 +108,40 @@ Roteamento fixo de modelos (não avaliar complexidade da task):
 
 Substitui a seção "Model Selection" do skill `subagent-driven-development` que usa linguagem vaga ("most capable", "fast cheap").
 
-**Cadência de testes e reviews:** default do skill é a cada task; política da OK é **só ao final de cada fase** (`## Fase N — <nome>`; sem fases = plano inteiro como 1 fase). Implementer ainda commita por task. Final code review do plano inteiro continua.
+**Cadência de testes e reviews:** a canônica é a do `<playbook-root>patterns/dev-process.md` — testes por fase = **só o que a fase escreveu** (direto); suíte global **só via script do projeto** com verde de referência; teste com banco **fora do plano por padrão**; TDD não obrigatório (teste antes da entrega só em correção de bug); review de fase ao fim de cada fase + **review do conjunto como gate da entrega** (re-roda após correções, base atualizada, confirmado por escrito, prompt dirigido das oito formas).
 
 **Não aplicar quando:** usuário pede review por task explícito; task crítica marcada (🚨); plano sem fases com menos de 5 tasks.
 
 **Paralelismo:** sempre oferecer paralelismo quando o plano permitir. Classificar tasks como sequenciais (dependência de output) vs paralelas (arquivos disjuntos). O dispatch plan é apresentado **uma vez, para o plano inteiro, antes do primeiro dispatch** — aprovado o mapa, executar todas as fases sem novo OK, reportando entre fases. Parar só por: BLOCKED de subagente, review/teste que exige mudar plano ou spec, classificação errada de forma arriscada, ou ação destrutiva/fora de escopo. Em **fase paralela** o implementer não commita (índice do `.git` é compartilhado): entrega report com paths + mensagem, e o controller commita com `git commit -q -m "msg" --only -- <paths>` sem ler diff. Skill: `superpowers:dispatching-parallel-agents`. Em dúvida, sequencializar.
+
+### Processo de desenvolvimento (dev-process)
+
+Referência completa: `<playbook-root>patterns/dev-process.md`. O essencial que
+vale em toda sessão:
+
+| Fluxo | Quando | Forma |
+|---|---|---|
+| **Ajuste pontual** | usuário está usando e quer mudar algo | sem plano, direto, onde ele testa |
+| **Funcionalidade** | trabalho novo, várias frentes | plano com fases, até a entrega |
+| **Processo** | criar/consertar script | sessão separada — entregar o prompt, que **vira pendência** |
+| **Correção de bug** | comportamento medível antes/depois | reproduz → corrige → regressão **antes** da entrega |
+
+- **Gatilho de risco** (escala trabalho pequeno para o fluxo completo): (1) *se
+  eu errar, desfaz sozinho?* (2) *o efeito aparece fora do que estou mudando?*
+- **Entrega é no fim do plano**; parada intermediária só se acordada no gate.
+  **Entrega ≠ merge: nunca mergear sem o usuário pedir** — perguntar "merge, ou
+  usar na worktree?". Merge a pedido: avaliar (`git merge-tree`), `--no-ff`, sem
+  rebase por reflexo.
+- **Scripts de processo** (worktree, suíte global, banco de teste — o projeto
+  implementa, o contrato é fixo): linha-sinal `OK`/`SUJO:`/`FALTA:` + exit code.
+  Suíte global **nunca na mão**; a baseline torna a atribuição de falha fato.
+  Main suja na abertura = commit pendente → o script verifica, o usuário decide.
+- **Falha sem relação com o diff:** 1 linha, "não é minha", usuário decide.
+- **Pendências** em `<pendencias-root>` (template `templates/pendencias.template.md`):
+  um arquivo por sessão/plano, primeira coluna = área, registrar no ato. Antes de
+  mexer numa área, grep pela área na pasta e avisar o usuário.
+- **Sinal de atenção:** toda resposta que encerra um turno termina com
+  **▶ Pode testar** · **❓ Decisão: `<pergunta>`** · **📖 Leia antes — `<porquê>`**.
 
 ### Registro de feedback de sessão
 

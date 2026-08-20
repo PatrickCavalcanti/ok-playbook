@@ -113,15 +113,23 @@ Decisão do plano + skill, não regra global. Mas o default é per-task.
 
 ## 6. Workflow do controller
 
-### 6.1 Discovery (Task 0) quando spec vem de fora
+### 6.1 Discovery (Task 0) quando o plano cita o que não foi aberto
 
-Se o plano que está prestes a executar foi escrito em outra sessão ou por outro agente, antes de despachar implementers, rode uma **Task 0 de discovery** contra o código real:
+O gatilho não é a **procedência** do plano ("veio de outra sessão") — é a
+**memória**: o risco existe sempre que o plano cita código que o planejador
+**não abriu nesta sessão** (medido em 7 execuções: erro de costura mora
+exatamente nessa fronteira; o planejador da própria sessão é igualmente cego, e
+confia mais em si). Antes de despachar implementers:
 
 - Confirmar que entidades referenciadas existem.
 - Confirmar que helpers/funções citados estão exportados.
 - Confirmar que assumptions do plano batem com a realidade.
 
-Desvios encontrados em discovery são corrigidos no plano *antes* do primeiro dispatch. Notas de desvio que aparecem só na execução (ex: "spec assume tabela X; código usa Y") deveriam ter sido pegas aqui.
+Desvios são corrigidos no plano *antes* do primeiro dispatch. A forma barata e
+suficiente dessa conferência é o **passo zero no prompt de cada dispatch**
+(§6.3) — em 5 execuções medidas, zerou os erros de costura a custo de minutos,
+enquanto uma folha de contratos elaborada (5 scouts em paralelo) não evitou os
+críticos, que eram de lógica.
 
 ### 6.2 Setup de ambiente antes do dispatch
 
@@ -142,7 +150,21 @@ Mínimo do prompt:
 - **Contexto necessário** (spec linkada, plano linkado, arquivos relevantes).
 - **Escopo de mudança** (que arquivos pode tocar; que não pode tocar).
 - **Critério de validação** (testes que devem passar, lint, type-check).
-- **Protocolo de bloqueio** ("se encontrar ambiguidade não-coberta no plano, devolver BLOCKED com pergunta; não decidir sozinho").
+- **Passo zero de premissas**: símbolos, assinaturas e textos exatos que o step
+  assume, com "se divergir, PARE e devolva BLOCKED — não adapte por conta".
+- **Pergunta de julgamento no fim (obrigatória)**: sobre o que o subagente
+  acabou de construir. Medido: numa execução, 5 achados vieram só dela.
+- **Exceção autorizada de escopo fechado** quando o controller antecipa
+  divergência tolerável — evita transformar todo desvio em BLOCKED.
+- **Terceiro caminho — divergir e relatar**: quando o texto do plano contradiz o
+  critério de verificação do próprio plano, o subagente segue o critério e
+  relata. BLOCKED é para ambiguidade, não para erro óbvio do plano.
+- **Proibições fixas do prompt-base** (não dependem de o controller lembrar):
+  git destrutivo (`checkout -- .`, `checkout <sha> -- <path>`, `stash`, `reset`,
+  `restore`, `clean`, `worktree remove` — repositório compartilhado entre
+  sessões; um review já colidiu com stash alheia); esperar teste em background
+  (foreground com timeout, ou report sem o teste); artefato de prova dentro do
+  tree (harness/stub/versão antiga vão para o scratchpad).
 
 **Não delegue síntese.** "Com base na sua análise, implemente X" empurra decisão para o subagente. Prompt diz exatamente o que mudar, onde, e como verificar.
 
@@ -264,7 +286,12 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 
 ### Após execução
 
-- [ ] Final code reviewer (Opus) rodou antes de fechar (SHOULD)
+- [ ] Review do conjunto (papel de revisão forte) rodou, **re-rodou depois das
+      correções**, com a worktree atualizada contra a base — confirmado por
+      escrito no report de entrega (MUST — é o gate da entrega; achou o defeito
+      crítico em 7 de 7 execuções medidas; prompt dirigido em
+      [`dev-process.md §4`](./dev-process.md))
+- [ ] Entrega perguntou merge × usar na worktree — **nenhum merge sem pedido** (MUST)
 - [ ] Worktree limpa com `git worktree remove` (não `rm -rf` manual) (MUST)
 - [ ] Feedback de fricções do despache registrado (ver [`feedback-loop.md`](./feedback-loop.md)) (SHOULD)
 

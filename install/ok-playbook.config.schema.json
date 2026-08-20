@@ -52,6 +52,10 @@
         "insights": {
           "type": "string",
           "description": "Resolve <insights-root>. Default: 'docs/insights/'"
+        },
+        "pendencias": {
+          "type": "string",
+          "description": "Resolve <pendencias-root>. Opcional (projetos instalados antes do dev-process não o têm). Default: 'docs/pendencias/'"
         }
       }
     }
@@ -67,7 +71,8 @@
         "superpowers": "docs/superpowers/",
         "backlog": "docs/agent-feedback/",
         "drafts": "docs/_drafts/",
-        "insights": "docs/insights/"
+        "insights": "docs/insights/",
+        "pendencias": "docs/pendencias/"
       }
     }
   ]

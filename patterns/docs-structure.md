@@ -72,6 +72,10 @@ Este doc serve a três usos:
     │   ├── _template.md
     │   └── YYYY-MM-DD-<nome>.md
     │
+    ├── pendencias/                        # <pendencias-root> — o que precisa
+    │   ├── _template.md                   #   ser feito e não impediu a entrega
+    │   └── YYYY-MM-DD-<plano-ou-sessão>.md  # (ver patterns/dev-process.md §9)
+    │
     └── insights/                          # <insights-root> — insights & upstream
         ├── _template.md
         ├── YYYY-MM-DD-<tema>.md
@@ -93,6 +97,7 @@ Princípio chave: **todos os `<*-root>` são parentes de `<docs-root>`**. Não t
 | `<backlog-root>` | `<docs-root>/agent-feedback/` | Feedback de execuções de agentes |
 | `<drafts-root>` | `<docs-root>/_drafts/` | Rascunhos de novos agentes |
 | `<insights-root>` | `<docs-root>/insights/` | Insights de evolução + upstream-proposals |
+| `<pendencias-root>` | `<docs-root>/pendencias/` | Pendências de trabalho (≠ insight): um arquivo por sessão/plano, tabela com área na 1ª coluna ([`dev-process.md §9`](./dev-process.md)) |
 
 `<playbook-root>` é o único placeholder que **não** vive sob `<docs-root>` — aponta pra fora do projeto consumidor:
 

@@ -21,40 +21,48 @@ Plugin `superpowers-marketplace` instalado via `claude /plugin install`.
 
 ---
 
-## Roteamento de modelos (regra fixa, não avaliar complexidade da task)
+## Roteamento por papel (regra fixa, não avaliar complexidade da task)
 
-| Papel | Model |
+A política é por **papel**; os nomes de modelo são o mapeamento atual e podem ser
+reconfigurados por projeto sem mudar o processo. O invariante é a **assimetria**:
+implementação no modelo econômico, revisão final no mais capaz disponível.
+
+| Papel | Hoje mapeado para |
 |---|---|
-| Sessão principal (brainstorm + plan) | Opus (iniciar a sessão com Opus via settings padrão ou `/model`) |
+| Sessão principal (brainstorm + plan) | Opus (iniciar a sessão com ele via settings ou `/model`) |
 | Implementer (executa tarefas do plano) | Sonnet |
-| Spec reviewer (verifica conformidade com spec) | Sonnet |
-| Code quality reviewer (revisa qualidade) | Opus |
-| Final code reviewer (revisão final completa) | Opus |
+| Spec reviewer (conformidade com spec) | Sonnet |
+| Revisão de fase (qualidade, agentes separados) | Sonnet |
+| Revisão forte (conjunto, final) | Opus |
 
-Justificativa: Sonnet é eficiente pra execução estruturada (plano define o quê). Opus é necessário pra julgamento arquitetural e review final.
-
-Nota: esta política substitui a seção "Model Selection" do skill `subagent-driven-development` que usa linguagem vaga ("most capable", "fast cheap model").
+Nota: esta política substitui a seção "Model Selection" do skill
+`subagent-driven-development` que usa linguagem vaga ("most capable", "fast
+cheap model"). ⚠️ Aposta registrada: a revisão de fase em Sonnet achou defeito
+real nas 4 execuções medidas, mas a base histórica rodava em Opus — reavaliar se
+a taxa cair.
 
 ---
 
 ## Cadência de testes e reviews
 
-Política que substitui o default do skill:
+> **A cadência canônica agora vive em [`dev-process.md`](./dev-process.md) §4**
+> (quatro fluxos, entrega no fim do plano, suíte só via script com baseline,
+> teste com banco fora por padrão, review do conjunto como gate da entrega com o
+> prompt dirigido das oito formas). Este bloco resume o que substitui o default
+> do skill:
 
 | Etapa | Default do skill | Política OK |
 |---|---|---|
 | Implementer roda steps da task | sim | sim |
 | Implementer commita ao final da task | sim | sim — **exceto em fase paralela**, onde quem commita é o controller (ver §Paralelismo) |
-| Testes da task isolada | sim | **não** |
-| Spec review por task | sim | **não** |
-| Code quality review por task | sim | **não** |
-| Testes acumulados da fase | — | **sim**, ao final da fase |
-| Spec review da fase | — | **sim**, ao final da fase |
-| Code quality review da fase | — | **sim**, ao final da fase |
-| Final code review do plano completo | sim | sim (preservar) |
+| Testes por task / review por task | sim | **não** |
+| Testes ao fim da fase | — | **só o que a fase escreveu**, rodados direto |
+| Suíte global | por task | **só via script do projeto** com verde de referência (baseline) — sem script, não roda |
+| Spec + quality review da fase | — | **sim**, ao final da fase |
+| Review do conjunto (revisão forte) | sim | sim — **gate da entrega**: re-roda após correções, base atualizada, confirmado por escrito |
+| TDD | sim | **não obrigatório** — teste antes da entrega só em correção de bug |
 
 - **Definição de "fase":** header `## Fase N — <nome>` (ou `# Phase N — <nome>`) no plano. Sem fases explícitas, plano inteiro = 1 fase.
-- **Justificativa:** reviews por task em planos longos geram overhead desproporcional. Agrupar por fase mantém ciclo de feedback relevante (fase = unidade entregável) e reduz custo.
 - **Trade-off aceito:** bugs cedo aparecem só no review do fim da fase. Mitigação: implementer commita por task → `git bisect` continua barato.
 - **Quando NÃO aplicar:**
   - Usuário pede review por task explícito.
