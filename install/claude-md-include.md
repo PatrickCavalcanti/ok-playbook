@@ -141,7 +141,9 @@ vale em toda sessão:
   um arquivo por sessão/plano, primeira coluna = área, registrar no ato. Antes de
   mexer numa área, grep pela área na pasta e avisar o usuário.
 - **Sinal de atenção:** toda resposta que encerra um turno termina com
-  **▶ Pode testar** · **❓ Decisão: `<pergunta>`** · **📖 Leia antes — `<porquê>`**.
+  **⏳ Nada pendente de você — `<½ linha>`** (trabalho segue / só registro) ·
+  **▶ Pode testar** (só com passos acima) · **❓ Decisão: `<pergunta>`** ·
+  **📖 Leia antes — `<porquê>`**. Na dúvida, o de menor atenção que seja verdadeiro.
 
 ### Registro de feedback de sessão
 

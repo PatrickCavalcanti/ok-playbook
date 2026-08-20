@@ -3,11 +3,11 @@
 ## Caminho rápido (recomendado)
 
 ```bash
-pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.4.0
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.4.1
 pnpm exec ok-playbook init
 ```
 
-> Use sempre a última tag publicada (hoje `v0.4.0`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
+> Use sempre a última tag publicada (hoje `v0.4.1`) — confira em [tags](https://github.com/PatrickCavalcanti/ok-playbook/tags).
 
 O `init` é idempotente — rode quantas vezes quiser. Faz:
 
@@ -26,12 +26,12 @@ Customizar paths: edite `ok-playbook.config.json` depois. Re-rodar `init` não s
 A forma canônica é **`git+https://`**. O Git Credential Manager do Windows já está autenticado para os repos da conta, então HTTPS funciona sem setup nenhum — enquanto SSH exige chave gerada e registrada.
 
 ```bash
-pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.4.0
+pnpm add git+https://github.com/PatrickCavalcanti/ok-playbook.git#v0.4.1
 ```
 
 > ⚠️ Versões anteriores deste doc traziam `git+ssh://git@github.com:PatrickCavalcanti/…` — que além de exigir chave, é **URL malformada**: com o esquema `git+ssh://` o separador tem que ser `/`, não `:` (o `:` é forma scp-style, que só vale *sem* o esquema). Se você tentou instalar por esse comando e falhou, era isso.
 >
-> SSH (`git+ssh://git@github.com/PatrickCavalcanti/ok-playbook.git#v0.4.0`, com barra) continua válido para máquina com chave configurada. Em **CI** nenhuma das duas serve sozinha: repo privado exige um fine-grained PAT com leitura, exposto como secret.
+> SSH (`git+ssh://git@github.com/PatrickCavalcanti/ok-playbook.git#v0.4.1`, com barra) continua válido para máquina com chave configurada. Em **CI** nenhuma das duas serve sozinha: repo privado exige um fine-grained PAT com leitura, exposto como secret.
 
 ### O procedimento
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 (2026-08-20)
+
+Correção do sinal de atenção (`dev-process.md §10`, `claude-md-include.md`):
+com três formas, **"▶ Pode testar" virou o sinal de "terminei algo"** — apareceu
+no meio de fases e em respostas só de docs, porque não havia forma para o caso
+mais comum de um plano em andamento. Entra a quarta: **⏳ Nada pendente de você
+— `<meia linha>`** ("fase 2 concluída, seguindo" / "só registros"). "Pode
+testar" passa a exigir passos concretos logo acima. Regra de desempate: na
+dúvida, o sinal de **menor** atenção que ainda seja verdadeiro.
+
 ## 0.4.0 (2026-08-20)
 
 O processo de trabalho vira canon: **`patterns/dev-process.md`**, destilado de um

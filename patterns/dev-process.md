@@ -255,16 +255,24 @@ melhoria observada; pendência é coisa a fazer.
 ## 10. Sinal de atenção
 
 O usuário opera várias sessões em paralelo. **Toda resposta que encerra um turno
-termina com uma destas três formas fixas, em negrito, como última linha:**
+termina com uma destas quatro formas fixas, em negrito, como última linha:**
 
-- **▶ Pode testar** — nada pendente dele; passos de teste acima.
+- **⏳ Nada pendente de você — `<meia linha>`** — trabalho segue ("fase 2
+  concluída, seguindo para a 3") ou só houve registro ("só docs, nada a
+  testar"). O sinal de **menor** atenção e o mais comum no meio de um plano.
+- **▶ Pode testar** — existe algo concreto para exercitar **e os passos estão
+  logo acima**. Sem passo de teste acima, não é este sinal.
 - **❓ Decisão: `<a pergunta, em uma linha>`** — basta ler a pergunta.
 - **📖 Leia antes — `<meia linha do porquê>`** — o corpo muda o que ele faria.
 
 Não é para escrever menos — o corpo rico alimenta o contexto. O sinal diz, de
-relance, quanta atenção a sessão precisa agora. (Origem: pedido explícito do
-usuário após 6h de sessão; das 9 mensagens finais amostradas na 1ª rodada, só a
-que veio depois do pedido sinalizava bem.)
+relance, quanta atenção a sessão precisa agora. **Na dúvida entre dois, o de
+menor atenção que ainda seja verdadeiro** — "Pode testar" falso custa mais que
+"Nada pendente" conservador. (Origem: pedido explícito do usuário após 6h de
+sessão; das 9 mensagens finais amostradas na 1ª rodada, só a que veio depois do
+pedido sinalizava bem. A quarta forma entrou um dia depois: com três, "Pode
+testar" virou "terminei algo" e apareceu no meio de fases e em respostas só de
+docs.)
 
 ---
 
