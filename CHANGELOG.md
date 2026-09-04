@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.5.0 (2026-09-04)
+
+**O sinal de atenção passa a marcar a devolução do controle, não o fim da
+mensagem** (`patterns/dev-process.md` §10/§12/§13, `install/claude-md-include.md`).
+A 0.4.1 criou o ⏳ para absorver as mensagens de meio de fase — e com isso deu
+nome aprovado ao encerramento de turno com trabalho pendente: o agente escrevia
+*"⏳ Nada pendente — Task 5b é a próxima"* sem nenhuma tool call e parava, e o
+usuário respondia *"parou?"*. O anúncio da intenção substituía a ação.
+
+### Mudanças
+- **Gatilho** — o sinal é a última coisa escrita antes de o usuário falar de
+  novo. Trabalho que continua no mesmo turno termina **na tool call, sem sinal**;
+  ausência de sinal significa "ainda trabalhando". Entre fases de um plano esse
+  passa a ser o caso normal.
+- **⏳ redefinido** — significa literalmente o rótulo: o controle voltou e não há
+  nada para o usuário. Dois casos fechados: o trabalho terminou ou foi só
+  registro; ou há agente/comando vivo seguindo sem ele. Deixa de significar
+  "trabalho segue".
+- **Trava do ⏳** — só é emitível com tool call no mesmo turno ou agente vivo;
+  sem nenhum dos dois e com trabalho pendente, é proibido. Verbo em 1ª pessoa no
+  futuro como última prosa do turno exige tool call correspondente.
+- **❓ Decisão** — passa a exigir dizer no corpo se parou de verdade ou se há
+  agente rodando.
+- **§12** — o item de checklist dizia "última linha de **cada** resposta (MUST)",
+  contradizendo o §10 desde a 0.4.0. Era a formulação mais forte do conjunto e a
+  que produzia a injeção indiscriminada. Reescrito.
+- **§13** — novo anti-padrão: ⏳ anunciando a etapa seguinte sem despachá-la no
+  mesmo turno.
+
+### Adoção
+Consumidores precisam atualizar o bloco do sinal no próprio `CLAUDE.md` — o
+include novo não substitui texto já copiado para lá.
+
 ## 0.4.2 (2026-08-20)
 
 O `init` passa a **scaffoldar `<pendencias-root>`** — a 0.4.0 publicou o

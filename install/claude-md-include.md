@@ -140,10 +140,14 @@ vale em toda sessão:
 - **Pendências** em `<pendencias-root>` (template `templates/pendencias.template.md`):
   um arquivo por sessão/plano, primeira coluna = área, registrar no ato. Antes de
   mexer numa área, grep pela área na pasta e avisar o usuário.
-- **Sinal de atenção:** toda resposta que encerra um turno termina com
-  **⏳ Nada pendente de você — `<½ linha>`** (trabalho segue / só registro) ·
-  **▶ Pode testar** (só com passos acima) · **❓ Decisão: `<pergunta>`** ·
-  **📖 Leia antes — `<porquê>`**. Na dúvida, o de menor atenção que seja verdadeiro.
+- **Sinal de atenção:** marca a **devolução do controle**, não o fim da mensagem
+  — se o trabalho segue neste mesmo turno, a mensagem termina na tool call e
+  **não leva sinal** (entre fases de um plano, esse é o caso normal). Quando o
+  controle volta: **⏳ Nada pendente de você — `<½ linha>`** (acabou / só
+  registro, **ou** agente vivo — nunca "vou fazer X" sem tool call no mesmo
+  turno) · **▶ Pode testar** (só com passos acima) · **❓ Decisão:
+  `<pergunta>`** (dizer se parei ou se há agente rodando) · **📖 Leia antes —
+  `<porquê>`**. Na dúvida, o de menor atenção que seja verdadeiro.
 
 ### Registro de feedback de sessão
 

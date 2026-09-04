@@ -254,25 +254,54 @@ melhoria observada; pendência é coisa a fazer.
 
 ## 10. Sinal de atenção
 
-O usuário opera várias sessões em paralelo. **Toda resposta que encerra um turno
-termina com uma destas quatro formas fixas, em negrito, como última linha:**
+O usuário opera várias sessões em paralelo e decide de relance quais precisam
+dele agora. O sinal existe para essa varredura.
 
-- **⏳ Nada pendente de você — `<meia linha>`** — trabalho segue ("fase 2
-  concluída, seguindo para a 3") ou só houve registro ("só docs, nada a
-  testar"). O sinal de **menor** atenção e o mais comum no meio de um plano.
+**O sinal marca a devolução do controle — não o fim da mensagem.** Ele é a
+última coisa escrita antes de o usuário falar de novo. Se o trabalho continua
+neste mesmo turno, a mensagem **termina na tool call** e não leva sinal nenhum;
+ausência de sinal significa "ainda trabalhando". **Entre fases de um plano esse
+é o caso normal**: o controller relata o que entrou e despacha a fase seguinte
+no mesmo turno.
+
+Quando o controle volta, a última linha é uma destas quatro formas fixas, em
+negrito:
+
+- **⏳ Nada pendente de você — `<meia linha>`** — o controle voltou e não há
+  nada para o usuário fazer. Dois casos, e só eles: o trabalho **terminou** ou
+  foi só registro ("só docs, nada a testar"); ou há agente/comando **vivo**
+  seguindo sem ele ("os três revisores estão rodando").
 - **▶ Pode testar** — existe algo concreto para exercitar **e os passos estão
   logo acima**. Sem passo de teste acima, não é este sinal.
-- **❓ Decisão: `<a pergunta, em uma linha>`** — basta ler a pergunta.
+- **❓ Decisão: `<a pergunta, em uma linha>`** — basta ler a pergunta. Dizer no
+  corpo, com todas as letras, se **parei de verdade** ou se **há agente
+  rodando**: ele não deve precisar adivinhar quem está esperando, nem rolar a
+  tela para reencontrar a pergunta.
 - **📖 Leia antes — `<meia linha do porquê>`** — o corpo muda o que ele faria.
 
-Não é para escrever menos — o corpo rico alimenta o contexto. O sinal diz, de
-relance, quanta atenção a sessão precisa agora. **Na dúvida entre dois, o de
-menor atenção que ainda seja verdadeiro** — "Pode testar" falso custa mais que
-"Nada pendente" conservador. (Origem: pedido explícito do usuário após 6h de
-sessão; das 9 mensagens finais amostradas na 1ª rodada, só a que veio depois do
-pedido sinalizava bem. A quarta forma entrou um dia depois: com três, "Pode
-testar" virou "terminei algo" e apareceu no meio de fases e em respostas só de
-docs.)
+**Trava do ⏳.** O ⏳ é uma afirmação sobre o estado de execução, não um fecho
+de cortesia. Antes de emitir, checar o próprio turno: *alguma tool call aqui
+iniciou trabalho, ou há agente vivo?* Se não há nenhum dos dois e o trabalho não
+acabou, o ⏳ é **proibido** — ou despachar agora (o certo na maioria das vezes),
+ou usar a forma que admite que parou. O cheiro é verbo em primeira pessoa no
+futuro como última prosa do turno ("vou despachar", "é a próxima", "em seguida
+faço"): cada um exige tool call correspondente **no mesmo turno**. Anunciar no
+plural e executar no singular é a mesma falha em escala menor.
+
+Não é para escrever menos — o corpo rico alimenta o contexto. **Na dúvida entre
+dois, o de menor atenção que ainda seja verdadeiro** — "Pode testar" falso custa
+mais que "Nada pendente" conservador.
+
+> **Origem.** O sinal nasceu de pedido explícito do usuário após 6h de sessão;
+> das 9 mensagens finais amostradas na 1ª rodada, só a que veio depois do pedido
+> sinalizava bem. Com três formas, "Pode testar" virou "terminei algo" e vazou
+> para o meio das fases; a quarta forma foi criada para absorver esse vazamento
+> — e acabou institucionalizando o encerramento de turno no meio do plano,
+> porque deu nome aprovado à mensagem "sigo depois". Medido: encerramento com
+> *"⏳ Nada pendente — Task 5b é a próxima"* em mensagem com **zero tool calls**,
+> respondida com *"parou?"*. O gatilho por devolução de controle é a correção
+> dessa: sem uma forma que signifique "encerro mas o trabalho segue", o anúncio
+> não tem como substituir a ação.
 
 ---
 
@@ -298,7 +327,8 @@ docs.)
       confirmado por escrito no report (MUST, gate da entrega)
 - [ ] Entrega perguntou merge × worktree; nenhum merge sem pedido (MUST)
 - [ ] Pendências registradas no ato; prompts de processo com pendência-ponte (SHOULD)
-- [ ] Última linha de cada resposta com o sinal de atenção (MUST)
+- [ ] Sinal de atenção **só** nas respostas que devolvem o controle; ⏳ com
+      trabalho em curso comprovado no turno (MUST)
 
 ## 13. Anti-padrões
 
@@ -313,6 +343,7 @@ docs.)
 | Prompt de processo só no texto da resposta | se perde; vira pendência-ponte |
 | Artefato de prova dentro do tree | classe do config local que quebrou a base pós-merge |
 | Lição registrada só em memória privada do agente | invisível para auditoria; pendência/insight é o canal |
+| ⏳ anunciando a etapa seguinte sem despachá-la no mesmo turno | o anúncio substitui a ação; o usuário compra silêncio e nada acontece |
 
 ## 14. Composição com outros patterns
 
