@@ -40,12 +40,21 @@ function mesclarSettings(projeto) {
   if (!existsSync(snippet)) return;
   const alvo = join(projeto, '.claude/settings.json');
   const atual = existsSync(alvo) ? JSON.parse(readFileSync(alvo, 'utf8')) : {};
-  const novo = JSON.parse(readFileSync(snippet, 'utf8')).permissions ?? {};
+  const doSnippet = JSON.parse(readFileSync(snippet, 'utf8'));
+  const novo = doSnippet.permissions ?? {};
   atual.permissions ??= {};
   for (const k of ['allow', 'deny']) {
     const lista = atual.permissions[k] ?? [];
     for (const r of novo[k] ?? []) if (!lista.includes(r)) lista.push(r);
     if (lista.length) atual.permissions[k] = lista;
+  }
+  for (const [evento, entradas] of Object.entries(doSnippet.hooks ?? {})) {
+    if (evento.startsWith('_comment') || !Array.isArray(entradas)) continue;
+    atual.hooks ??= {};
+    const lista = atual.hooks[evento] ?? [];
+    for (const e of entradas)
+      if (!lista.some((x) => x.matcher === e.matcher)) lista.push(e);
+    atual.hooks[evento] = lista;
   }
   mkdirSync(dirname(alvo), { recursive: true });
   writeFileSync(alvo, `${JSON.stringify(atual, null, 2)}\n`);

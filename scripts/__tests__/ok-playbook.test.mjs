@@ -17,7 +17,7 @@ function skillSintetica() {
   w('references/agents/docs-review.md', '---\ndescription: "D"\nwhen_to_use: "W <backlog-root>"\n---\n# DR\n');
   w('references/patterns/dev.md', '# Dev\n');
   w('assets/templates/feedback.md', '# Feedback\n');
-  w('assets/settings-snippet.json', JSON.stringify({ permissions: { allow: ['Bash(git *)'], deny: ['Bash(git push --force*)'] } }));
+  w('assets/settings-snippet.json', JSON.stringify({ permissions: { allow: ['Bash(git *)'], deny: ['Bash(git push --force*)'] }, _comment: 'x', hooks: { _comment_h: 'x', PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'node ${CLAUDE_PROJECT_DIR}/.claude/hooks/a.mjs' }] }] } }));
   return raiz;
 }
 
@@ -123,4 +123,35 @@ test('item que sai do canon → orfao', () => {
   rodar(s, 'apply', '--projeto', p);
   rmSync(join(s, 'references/agents/docs-review.md'));
   assert.match(rodar(s, 'status', '--projeto', p).out, /orfao\tskill:\.claude\/skills\/docs-review/);
+});
+
+test('apply registra hooks do snippet em projeto sem settings', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  rodar(s, 'apply', '--projeto', p);
+  const st = JSON.parse(ler(p, '.claude/settings.json'));
+  assert.equal(st.hooks.PreToolUse.length, 1);
+  assert.equal(st.hooks.PreToolUse[0].matcher, 'Bash');
+  assert.match(st.hooks.PreToolUse[0].hooks[0].command, /hooks[\\/]a\.mjs/);
+  assert.equal(Object.keys(st.hooks).some((k) => k.startsWith('_comment')), false);
+});
+
+test('matcher Bash do projeto fica intacto, sem duplicar', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  const dele = { matcher: 'Bash', hooks: [{ type: 'command', command: 'node meu.mjs' }] };
+  mkdirSync(join(p, '.claude'), { recursive: true });
+  writeFileSync(join(p, '.claude/settings.json'), JSON.stringify({ hooks: { PreToolUse: [dele] } }));
+  rodar(s, 'apply', '--projeto', p);
+  const st = JSON.parse(ler(p, '.claude/settings.json'));
+  assert.deepEqual(st.hooks.PreToolUse, [dele]);
+});
+
+test('apply duas vezes é idempotente nos settings', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  rodar(s, 'apply', '--projeto', p);
+  const um = ler(p, '.claude/settings.json');
+  rodar(s, 'apply', '--projeto', p);
+  assert.equal(ler(p, '.claude/settings.json'), um);
 });
