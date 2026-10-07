@@ -91,6 +91,8 @@ vale em toda sessão:
 - **Gatilho de risco** (escala trabalho pequeno para o fluxo completo): (1) *se
   eu errar, desfaz sozinho?* (2) *o efeito aparece fora do que estou mudando?*
 - **Entrega é no fim do plano**; parada intermediária só se acordada no gate.
+  Oferta de pausa em texto livre ("a menos que você queira olhar antes") é
+  parada entre fases disfarçada — não fazer.
   **Entrega ≠ merge: nunca mergear sem o usuário pedir** — perguntar "merge, ou
   usar na worktree?". Merge a pedido: avaliar (`git merge-tree`), `--no-ff`, sem
   rebase por reflexo.
