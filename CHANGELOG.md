@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 — 2026-10-07
+
+- `SKILL.md`: seção **"Migração de um projeto 0.x"** (M1–M6) — inventário, remoção do formato antigo por tipo (submódulo, dependência npm, cópia solta) junto com o reapontamento das referências, configuração com o que esperar no `plan`, fusão do CLAUDE.md regra a regra, provas e cuidado no merge. O Modo 1 detecta o formato antigo (passo 0) e desvia para ela.
+
 ## 1.0.0 — 2026-10-06
 
 **Quebra de formato:** o playbook deixa de ser pacote instalado (npm/submódulo)
@@ -18,7 +22,7 @@ e vira skill que materializa o canon no projeto.
 - Política de modelos alinhada: revisão de fase (spec + qualidade) = Sonnet; revisão do conjunto/final = Opus.
 
 ### Migração de projetos 0.x
-Rodar a skill no modo configurar: o bloco `<!-- ok-playbook:include:start -->` é substituído pelo bloco novo; remover depois o submódulo/dependência, `ok-playbook.config.json` e `OKPLAYBOOK.md`; ponteiros antigos em `.claude/skills/` aparecem como `conflito` (escolher `--so`).
+Ver `SKILL.md`, seção "Migração de um projeto 0.x" (desde 1.0.1).
 
 ## 0.5.0 (2026-09-04)
 

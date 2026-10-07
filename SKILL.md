@@ -1,7 +1,7 @@
 ---
 name: ok-playbook
 description: "Configura um projeto com o processo de desenvolvimento do ok-playbook (regras para CLAUDE.md/AGENTS.md, protocolos docs-review/new-agent/permissions-review/playbook-contribute, patterns, templates, hooks) e mantém o projeto alinhado ao canon. Também leva mudanças do projeto de volta ao playbook."
-when_to_use: "configurar o ok-playbook num projeto; atualizar/auditar um projeto já configurado contra o canon ('revalida o playbook', 'audita drift'); propor mudança no playbook a partir de insight/feedback do projeto ('sobe isso pro playbook')"
+when_to_use: "configurar o ok-playbook num projeto; migrar um projeto que usa o formato antigo (submódulo, dependência npm ou cópia do ok-playbook) — só a pedido explícito; atualizar/auditar um projeto já configurado contra o canon ('revalida o playbook', 'audita drift'); propor mudança no playbook a partir de insight/feedback do projeto ('sobe isso pro playbook')"
 ---
 
 # ok-playbook
@@ -33,6 +33,7 @@ Linhas do `plan`/`apply` (`<classe>␉<id>␉<destino>`):
 
 ## Modo 1 — Configurar (projeto sem `ok-playbook.json`)
 
+0. **Formato antigo?** Se o projeto tem o marcador `<!-- ok-playbook:include:start -->` no CLAUDE.md, `ok-playbook.config.json`, `OKPLAYBOOK.md`, dependência `ok-playbook` no `package.json`, submódulo ou pasta `packages/ok-playbook`, ou skills que apontam para `…/ok-playbook/agents/` → é migração: siga **"Migração de um projeto 0.x"** abaixo, que usa os passos deste modo no meio.
 1. Confirme a raiz do projeto (git root) e que a árvore está limpa (`git status --short`). Suja → pergunte ao dono se commita antes.
 2. Proponha os caminhos com os defaults abaixo, ajustados ao que já existe no projeto (procure pastas de docs, feedback, pendências). Pergunte só o que o projeto não responde.
    `docs` `docs/` · `arch` `docs/project-architecture/` · `agents` `docs/project-architecture/agents/` · `superpowers` `docs/superpowers/` · `backlog` `docs/agent-feedback/` · `drafts` `docs/_drafts/` · `insights` `docs/insights/` · `pendencias` `docs/pendencias/`
@@ -44,6 +45,79 @@ Linhas do `plan`/`apply` (`<classe>␉<id>␉<destino>`):
 6. Hooks (`.claude/hooks/`): são materializados idênticos em qualquer checkout (a raiz do projeto é calculada em tempo de execução, via `CLAUDE_PROJECT_DIR`). Rode o primeiro `apply` para que `.claude/hooks/lib/areas.mjs` exista, ajuste `SCRATCH`/`LEITURA` nele ao que o dono usa e então rode `apply` de novo com `--manter hook:lib/areas.mjs` (registrar antes de o arquivo existir não o escreve). O `apply` mescla `permissions.allow/deny` e `hooks` (matchers `Bash` e `PowerShell`) em `.claude/settings.json` **uma vez**: o que o playbook já ofereceu fica registrado em `ok-playbook.json` (`settings`), então regra ou matcher que o dono remover depois não volta; se o projeto já tinha um matcher desses, o dele é mantido — confira se ele aponta para `.claude/hooks/…`. Se `settings.json` não for JSON válido (ex.: comentário) o `apply` para antes de escrever qualquer coisa (`FALTA: … não é JSON válido`): o dono corrige o arquivo ou você usa `--sem settings`, que desliga o merge. BOM, fim de linha e indentação do arquivo são preservados.
 7. Rode `apply` com as flags decididas. Repita até `OK` (`FALTA: N itens pedem decisão` lista o que falta decidir).
 8. Rode `status` → `OK sem drift`. Mostre ao dono o `git status --short` e proponha o commit (`chore: configura ok-playbook v<versão>`).
+
+## Migração de um projeto 0.x (formato de pacote → skill)
+
+Migração é trabalho de **funcionalidade**, não ajuste: rode numa worktree do
+projeto (siga o processo dele) e só por pedido explícito do dono — nunca porque
+um "revalida o playbook" caiu aqui. Faça um passo por commit.
+
+**M1. Inventário (só leitura).** Descubra e mostre ao dono:
+- **Formato de consumo:** submódulo (`.gitmodules` com `ok-playbook`), dependência
+  npm (`"ok-playbook": "git+…#vX"` no `package.json`), ou cópia solta (pasta com os
+  arquivos do playbook versionados no próprio projeto).
+- **Caminhos** já declarados (`ok-playbook.config.json` → `paths`; senão procure as
+  pastas de docs, feedback, pendências) — viram o `paths` do `ok-playbook.json`.
+- **Quem cita o playbook pelo caminho antigo:** `git grep -nE "ok-playbook/(patterns|agents|templates|install)|node_modules/ok-playbook|packages/ok-playbook|<playbook-root>|OKPLAYBOOK|ok-playbook\.config|claude-md-include|playbook-audit"`, separando
+  arquivos vivos (CLAUDE.md, AGENTS.md, `.claude/`, `.agents/`, scripts, docs de
+  arquitetura, `ARCHITECTURE.md`) de histórico (feedback, pendências, specs/planos
+  antigos — esses ficam como estão).
+- **Cópias locais já existentes:** hooks em `.claude/hooks/`, `scripts/worktree.mjs`
+  e afins, perfis, regras de git — vão virar `customizado` ou `do-projeto`, nunca
+  sobrescritos sem o dono escolher.
+- **O que o CLAUDE.md do projeto tem por conta própria** e que repete o processo
+  (blocos "processo vigente", "este bloco vence o playbook"): é o que a fusão (M4)
+  vai resolver.
+
+**M2. Remover o formato antigo e consertar quem o cita — no mesmo commit.**
+- *Submódulo:* `git submodule deinit -f <path>` (só com o checkout do submódulo
+  limpo e o HEAD dele existente no repo do playbook), `git rm <path>`, tirar a
+  seção do `.gitmodules` (apague o arquivo se ficar vazio). Scripts que tratavam o
+  submódulo pelo nome (abrir/fechar worktree, suíte que o pulava) precisam deixar
+  de tratar — mas worktrees **já abertas** continuam com ele: o `close` delas e a
+  suíte precisam tolerar o resto até fecharem.
+- *Dependência npm:* tirar `ok-playbook` do `package.json` e atualizar o lockfile
+  **é mudança de dependência — pare e peça o ok do dono antes**; rode a instalação
+  do jeito do projeto (com o app do dono fechado, se ele trava arquivos).
+- *Cópia solta:* `git rm -r` da pasta.
+- Em todos: remover `ok-playbook.config.json`, `OKPLAYBOOK.md`,
+  `OKPLAYBOOK.history/` e as skills `playbook-audit` (`.claude/skills/`,
+  `.agents/skills/`); reapontar cada referência viva do M1 para o destino novo
+  (`<docs>ok-playbook/patterns/…`, `<docs>ok-playbook/templates/…`,
+  `.claude/skills/<nome>/SKILL.md`), com caminho relativo correto **a partir de cada
+  arquivo**. Ao final, o grep do M1 só acha histórico.
+
+**M3. Configurar.** Siga o Modo 1 (passos 1–8) com os `paths` do inventário. O que
+esperar no `plan` de um projeto migrado:
+- `regras:CLAUDE.md` → `atualizavel` (o bloco legado `include` é trocado pelo novo).
+- `skill:*` → `conflito` (os ponteiros antigos) → `--so`.
+- `hook:*` → `conflito` se o projeto já tinha hooks: `--manter` para os que o dono
+  customizou (mostre o diff), `--so` para os que eram cópia sem mudança.
+- Scripts e perfis próprios → `--do-projeto <paths>`.
+- `regras:AGENTS.md`: se o AGENTS.md do projeto só manda ler o CLAUDE.md, `--sem
+  regras:AGENTS.md` evita o bloco duplicado; senão deixe entrar.
+
+**M4. Fundir o CLAUDE.md (e o AGENTS.md).** Antes de editar, guarde fora do repo a
+versão anterior (`git show <base>:CLAUDE.md > <scratch>/claude-md-antes.md`). Para
+cada regra do projeto fora do bloco: se o bloco ou `<docs>ok-playbook/patterns/`
+já a contém (mesmo sentido) → sai; se é específica do projeto (comandos reais dos
+scripts, banco, infra, regras fixas) → fica; se é genérica e o canon não tem → fica
+numa seção "Complementos do <projeto> ao processo" **e** proponha o Modo 3. Regra
+de **toda sessão** (git destrutivo, sinal de atenção, parada) nunca pode ficar só
+no pattern — tem de estar no bloco ou no CLAUDE.md. Notas de precedência do tipo
+"este bloco vence o playbook" saem (o bloco já declara a precedência). Ponteiros
+no AGENTS.md para o include antigo passam a apontar para o bloco. Nunca edite
+dentro dos marcadores `ok-playbook:start/end`; o `status` tem de continuar `OK`.
+
+**M5. Provar.** `status` → `OK sem drift`; o grep do M1 só acha histórico; a suíte
+do projeto (pelo script dele) sem regressão; uma sessão nova do agente responde,
+sem abrir nada fora do repo, onde está um protocolo (ex.: docs-review) e qual a
+receita de commit em fase paralela. A revisão do conjunto compara **regra a
+regra** o `claude-md-antes.md` com bloco + CLAUDE.md novo e lista o que sumiu.
+
+**M6. Depois do merge.** Se a main andou e conflitou no CLAUDE.md, não resolva
+"ficando com o lado da branch" sem olhar: regra nova do dono na main vai para o
+canon (Modo 3) ou para os complementos, e o bloco é regenerado com `apply`.
 
 ## Modo 2 — Atualizar / auditar (projeto com `ok-playbook.json`)
 
