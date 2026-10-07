@@ -1,6 +1,6 @@
 ---
 date: 2026-05-29
-status: open
+status: closed
 type: feature
 priority: medium
 related: ["2026-05-29-ok-playbook-install-monorepo-e-worktree-strategy"]
@@ -40,3 +40,10 @@ Com a migração do modelo vendored (submódulo em `packages/ok-playbook/`) pro 
 - Sessão onde surgiu: conclusão da migração ok-playbook v0.2.0 (2026-05-29).
 - Canon relacionado: `node_modules/ok-playbook/patterns/feedback-loop.md §8.6` e §9.2; `node_modules/ok-playbook/agents/playbook-contribute.md`; `node_modules/ok-playbook/agents/playbook-audit.md`; `node_modules/ok-playbook/templates/upstream-proposal.md`.
 - Bug correlato (mesma classe): template `_index.template.md` do v0.2.0 emite paths `packages/ok-playbook/` em vez de `node_modules/ok-playbook/` (corrigido localmente no commit que ajusta refs em `docs/architecture/`).
+
+## Encerramento (2026-10-06)
+
+Premissa superada: o playbook deixa de ser pacote em `node_modules` e vira skill
+que materializa o canon no projeto (spec do Igris
+`2026-10-06-ok-playbook-como-skill-design.md`). Contribuição volta pelo modo
+"contribuir" da skill.

@@ -172,7 +172,7 @@ Rules em `permissions.allow` cobrem a maioria dos casos **quando o comando é si
 
 2. **Edições em `.claude/settings.json` não recarregam mid-sessão.** Apenas o diálogo "Yes don't ask again" atualiza memória + disco simultaneamente. Toda mudança em rules exige reload window. **Hooks recarregam ao vivo.** Essa assimetria é o que faz um conserto correto parecer que não funcionou — e leva a empilhar mais regras que também não casam. Por isso o conserto mora no hook.
 
-3. **Patterns muito dependentes de string-shape do comando** (quoting, casing, separadores de path) — onde a explosão combinatória vence a tentativa de generalizar.
+3. **Patterns muito dependentes de string-shape do comando** (quoting, casing, separadores de path) — onde a explosão combinatória vence a tentativa de generalizar. Caso típico: o matcher de `allow` quebra a string em `;` `|` `&&` **sem respeitar aspas**, então um comando composto ou inline (`for … done`, `python -c "…"`, `--format="%ci %s"`) com metacaractere dentro das aspas vira fragmentos que não casam regra alguma e pede permissão **mesmo com o head liberado**. Não dá para allowlistar fragmentos; o conserto é o hook quote-aware (abaixo) e, no comportamento, preferir script limpo a inline (ver [`./command-forms.md`](./command-forms.md)).
 
 ### A lista de "nunca" mora em `deny`, não na ausência de `allow`
 
