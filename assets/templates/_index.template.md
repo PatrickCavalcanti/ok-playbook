@@ -20,7 +20,7 @@ project-architecture/
 ├── ...
 ├── agents/                 # agentes de domínio do projeto
 │   └── <nome>.md           # protocolo do agente
-└── ok-design-architecture/ # (opcional) partners — extensões filosóficas
+└── design-architecture/    # (opcional) partners — extensões filosóficas
     └── *-partners.md
 ```
 
@@ -33,7 +33,7 @@ project-architecture/
 | Você vai... | Leia primeiro |
 |---|---|
 | Entender o projeto pela primeira vez | `project.md` |
-| Verificar conformidade arquitetural | `ok-design-architecture/code-design-partners.md` (se houver) ou `<playbook-root>patterns/code-design.md` |
+| Verificar conformidade arquitetural | `design-architecture/code-design-partners.md` (se houver) ou `<playbook-root>patterns/code-design.md` |
 | Criar/modificar `<dimensão-1>` (ex: módulo) | `<dimensão-1>.md` → invocar `agents/<dimensão-1>.md` (se existir) |
 | Criar/modificar `<dimensão-2>` | `<dimensão-2>.md` → invocar `agents/<dimensão-2>.md` |
 | Analisar feedback de agentes e atualizar docs | invocar `<playbook-root>agents/docs-review.md` |

@@ -51,7 +51,7 @@ Este doc serve a três usos:
     │   ├── <dimensão-N>.md
     │   ├── agents/                        # `paths.agents` — agentes de domínio
     │   │   └── <nome>.md
-    │   └── ok-design-architecture/        # (opcional) partners — extensões
+    │   └── design-architecture/           # (opcional) partners — extensões
     │                                      #     filosóficas dos patterns canon
     │
     ├── superpowers/                       # `paths.superpowers` — ciclo de vida
@@ -126,7 +126,7 @@ A cópia dos patterns e templates dentro do projeto fica em `ok-playbook/` sob a
 ### 5.2 Estrutura recomendada (SHOULD)
 
 - Seção "Ciclo de vida de specs e planos" se o projeto consome o `<superpowers-root>/`.
-- Link para `ok-playbook.json` e para o `<arch-root>/ok-design-architecture/` (se houver partners).
+- Link para `ok-playbook.json` e para o `<arch-root>/design-architecture/` (se houver partners).
 
 ### 5.3 Template
 

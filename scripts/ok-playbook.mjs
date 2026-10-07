@@ -47,9 +47,16 @@ function aplicar(o, m, itens, settings) {
     const escrever = classe !== 'marcador-quebrado' && (classe === 'novo' || classe === 'atualizavel' || o.so.includes(id));
     if (escrever) {
       const caminho = join(o.projeto, item.destino);
-      mkdirSync(dirname(caminho), { recursive: true });
-      const atual = existsSync(caminho) ? readFileSync(caminho, 'utf8') : null;
-      writeFileSync(caminho, item.tipo === 'bloco' ? inserirBloco(atual, item.conteudo, v) : adaptar(item.conteudo, atual));
+      try {
+        mkdirSync(dirname(caminho), { recursive: true });
+        const atual = existsSync(caminho) ? readFileSync(caminho, 'utf8') : null;
+        writeFileSync(caminho, item.tipo === 'bloco' ? inserirBloco(atual, item.conteudo, v) : adaptar(item.conteudo, atual));
+      } catch (e) {
+        // o que já foi escrito fica registrado; o resto o próximo apply refaz
+        m.playbook = { versao: v, origem: origem() };
+        gravarManifesto(o.projeto, m);
+        sair(`FALTA: falha ao escrever ${item.destino}: ${e.message}`, 1);
+      }
       escritos++;
     }
     if (item.tipo !== 'semente' && (escrever || classe === 'igual'))

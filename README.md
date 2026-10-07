@@ -63,7 +63,7 @@ tempo de uso.
 Sem dependências. Testes:
 
 ```bash
-node --test --test-force-exit scripts/__tests__/
+node --test --test-force-exit "scripts/__tests__/*.test.mjs"
 ```
 
 Layout: `SKILL.md`, `VERSION`, `scripts/`, `references/{patterns,agents}`,

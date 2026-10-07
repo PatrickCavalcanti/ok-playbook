@@ -11,30 +11,40 @@
  * conjunto substituiu.
  *
  * ─────────────────────────── PARAMETRIZAÇÃO ─────────────────────────────────
- * Ajuste PROJETO / SCRATCH / LEITURA e os whitelists abaixo na instalação, e
- * calibre MEDINDO (`tools/medir-comandos.mjs`), não adivinhando.
+ * PROJETO é calculado em tempo de execução (nada a preencher). Ajuste SCRATCH /
+ * LEITURA e os whitelists abaixo na instalação, e calibre MEDINDO (`tools/medir-comandos.mjs`), não adivinhando.
  */
+
+import { dirname, resolve as resolverPath } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Path do projeto: ABSOLUTO, lowercase, forward slashes, COM drive.
  *   e:/Projetos/MyApp  →  'e:/projetos/myapp'
  *   /home/user/app     →  '/home/user/app'
+ * Calculado a cada execução (CLAUDE_PROJECT_DIR, senão o local deste arquivo):
+ * o arquivo é idêntico em qualquer checkout, e worktrees seguem o root que o
+ * Claude Code informa.
  * COM drive de propósito: match por sufixo (como versões anteriores faziam)
  * trata um clone do mesmo projeto em outro caminho como se fosse este.
  */
-export const PROJETO = '<PROJECT_ROOT>';
+export const PROJETO = canon(
+  process.env.CLAUDE_PROJECT_DIR
+    // fallback: .claude/hooks/lib/areas.mjs → três níveis acima = raiz do checkout
+    || resolverPath(dirname(fileURLToPath(import.meta.url)), '..', '..', '..'),
+);
 
 /** Cache de plugins do Claude Code — scripts de skill executam a partir daqui. */
 export const PLUGINS = `${(process.env.USERPROFILE || process.env.HOME || '').replace(/\\/g, '/').toLowerCase()}/.claude/plugins`;
 
 /**
  * Descartáveis: escrita livre, de qualquer escopo. `/tmp` do Git Bash aponta
- * pro mesmo lugar que `e:/tmp` nesta máquina, mas chega ao hook como path
+ * pro mesmo lugar que o temp do Windows (ex.: `c:/temp`), mas chega ao hook como path
  * POSIX — as duas formas precisam estar listadas.
  */
 export const SCRATCH = [
   '/tmp',
-  // + áreas descartáveis próprias do projeto (ex.: 'e:/tmp' no Windows)
+  // + áreas descartáveis próprias do projeto (ex.: 'c:/scratch' no Windows)
   `${(process.env.TEMP || process.env.TMP || '').replace(/\\/g, '/').toLowerCase()}/claude`,
 ].filter((p) => p && p !== '/claude');
 

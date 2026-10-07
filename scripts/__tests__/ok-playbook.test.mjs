@@ -4,7 +4,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const SCRIPTS = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -157,18 +157,89 @@ test('apply duas vezes é idempotente nos settings', () => {
 });
 
 // ---- correções de review (I1, I3, I4, M6) ----
-test('I1: raiz do projeto entra em minúsculas nos hooks', () => {
+test('I1: hook com CRLF na fonte materializa sem \\r\\r\\n', () => {
   const s = skillSintetica();
   mkdirSync(join(s, 'assets/hooks/lib'), { recursive: true });
-  writeFileSync(join(s, 'assets/hooks/lib/areas.mjs'), "const P = '<PROJECT_ROOT>';\n");
-  const base = mkdtempSync(join(tmpdir(), 'okpb-'));
-  const p = join(base, 'MeuProjeto');
-  mkdirSync(p);
-  writeFileSync(join(p, 'ok-playbook.json'), '{"paths":{}}');
+  writeFileSync(join(s, 'assets/hooks/lib/areas.mjs'), 'const a = 1;\r\nconst b = 2;\r\n');
+  const p = projeto();
   assert.equal(rodar(s, 'apply', '--projeto', p).code, 0);
-  const t = ler(p, '.claude/hooks/lib/areas.mjs');
-  assert.match(t, /meuprojeto'/);
-  assert.equal(/[A-Z]/.test(t.replace('const P', '')), false);
+  const bruto = readFileSync(join(p, '.claude/hooks/lib/areas.mjs'), 'utf8');
+  assert.equal(bruto.includes('\r'), false);
+  assert.equal(bruto, 'const a = 1;\nconst b = 2;\n');
+  assert.equal(rodar(s, 'status', '--projeto', p).code, 0);
+});
+
+const AREAS_REAL = join(SCRIPTS, '..', 'assets/hooks/lib/areas.mjs');
+
+test('I1: apply em dois checkouts diferentes → hook idêntico (mesmo hash)', () => {
+  const s = skillSintetica();
+  mkdirSync(join(s, 'assets/hooks/lib'), { recursive: true });
+  cpSync(AREAS_REAL, join(s, 'assets/hooks/lib/areas.mjs'));
+  const a = projeto();
+  const b = join(mkdtempSync(join(tmpdir(), 'okpb-Outro-')), 'MeuProjeto');
+  mkdirSync(b);
+  writeFileSync(join(b, 'ok-playbook.json'), '{"paths":{}}');
+  rodar(s, 'apply', '--projeto', a);
+  rodar(s, 'apply', '--projeto', b);
+  const ma = JSON.parse(ler(a, 'ok-playbook.json')).itens['hook:lib/areas.mjs'];
+  const mb = JSON.parse(ler(b, 'ok-playbook.json')).itens['hook:lib/areas.mjs'];
+  assert.ok(ma.hash);
+  assert.equal(ma.hash, mb.hash);
+  assert.equal(ler(a, '.claude/hooks/lib/areas.mjs'), ler(b, '.claude/hooks/lib/areas.mjs'));
+  assert.equal(ler(a, '.claude/hooks/lib/areas.mjs').includes('<PROJECT_ROOT>'), false);
+});
+
+test('I1: areas.mjs materializado calcula PROJETO em tempo de execução', () => {
+  const s = skillSintetica();
+  mkdirSync(join(s, 'assets/hooks/lib'), { recursive: true });
+  cpSync(AREAS_REAL, join(s, 'assets/hooks/lib/areas.mjs'));
+  const p = projeto();
+  rodar(s, 'apply', '--projeto', p);
+  const alvo = join(p, '.claude/hooks/lib/areas.mjs');
+  const codigo = `import { PROJETO } from ${JSON.stringify(pathToFileURL(alvo).href)}; console.log(PROJETO)`;
+  const rodaCom = (env) => spawnSync(process.execPath, ['--input-type=module', '-e', codigo], { encoding: 'utf8', env }).stdout.trim();
+  assert.equal(rodaCom({ ...process.env, CLAUDE_PROJECT_DIR: 'E:\\Algum\\Outro\\Lugar' }), 'e:/algum/outro/lugar');
+  const semEnv = { ...process.env };
+  delete semEnv.CLAUDE_PROJECT_DIR;
+  assert.equal(rodaCom(semEnv), p.replace(/\\/g, '/').toLowerCase());
+});
+
+test('M1: customizado cujo arquivo sumiu → customizado-ausente; --so restaura', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  rodar(s, 'apply', '--projeto', p);
+  assert.equal(rodar(s, 'apply', '--projeto', p, '--manter', 'pattern:dev.md').code, 0);
+  rmSync(join(p, 'docs/ok-playbook/patterns/dev.md'));
+  const st = rodar(s, 'status', '--projeto', p);
+  assert.equal(st.code, 1);
+  assert.match(st.out, /customizado-ausente\tpattern:dev\.md/);
+  assert.equal(rodar(s, 'apply', '--projeto', p, '--so', 'pattern:dev.md').code, 0);
+  assert.equal(ler(p, 'docs/ok-playbook/patterns/dev.md'), '# Dev\n');
+  assert.equal(rodar(s, 'status', '--projeto', p).code, 0);
+});
+
+test('M2a: arquivo idêntico ao canon nunca é editado', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  rodar(s, 'apply', '--projeto', p);
+  writeFileSync(join(p, 'docs/ok-playbook/patterns/dev.md'), '# Dev v2\n');
+  writeFileSync(join(s, 'references/patterns/dev.md'), '# Dev v2\n');
+  assert.doesNotMatch(rodar(s, 'status', '--projeto', p).out, /editado/);
+  assert.equal(rodar(s, 'apply', '--projeto', p).code, 0);
+  assert.equal(rodar(s, 'status', '--projeto', p).code, 0);
+});
+
+test('M2b: erro de fs no meio → manifesto com o já escrito + FALTA', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  writeFileSync(join(p, 'docs'), 'sou um arquivo, não pasta');
+  const r = rodar(s, 'apply', '--projeto', p);
+  assert.equal(r.code, 1);
+  assert.match(r.ultima, /^FALTA: falha ao escrever docs\/.+: /);
+  assert.match(ler(p, 'CLAUDE.md'), /ok-playbook:end/);
+  const m = JSON.parse(ler(p, 'ok-playbook.json'));
+  assert.equal(m.itens['regras:CLAUDE.md'].estado, 'materializado');
+  assert.equal(m.itens['pattern:dev.md'], undefined);
 });
 
 test('I3: CLAUDE.md CRLF → só o bloco é inserido, resto byte a byte', () => {

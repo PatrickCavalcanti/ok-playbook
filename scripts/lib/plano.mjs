@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { blocoQuebrado, extrairBloco, hash, temLegado } from './render.mjs';
 
-export const PEDEM_DECISAO = ['conflito', 'editado', 'customizado-canon-mudou', 'orfao', 'do-projeto-ausente', 'marcador-quebrado'];
+export const PEDEM_DECISAO = ['conflito', 'editado', 'customizado-canon-mudou', 'orfao', 'do-projeto-ausente', 'marcador-quebrado', 'customizado-ausente'];
 
 export function classificar(item, manifesto, projeto) {
   const reg = manifesto.itens[item.id];
@@ -11,15 +11,19 @@ export function classificar(item, manifesto, projeto) {
   const caminho = join(projeto, item.destino);
   const atual = existsSync(caminho) ? readFileSync(caminho, 'utf8') : null;
   if (item.tipo === 'semente') return atual == null ? 'novo' : 'igual';
-  if (reg?.estado === 'customizado') return reg.hashOrigem === hash(item.fonte) ? 'customizado' : 'customizado-canon-mudou';
+  if (reg?.estado === 'customizado') {
+    if (atual == null) return 'customizado-ausente';
+    return reg.hashOrigem === hash(item.fonte) ? 'customizado' : 'customizado-canon-mudou';
+  }
   if (item.tipo === 'bloco' && blocoQuebrado(atual)) return 'marcador-quebrado';
   const local = item.tipo === 'bloco' ? (atual == null ? null : extrairBloco(atual)) : atual;
   if (local == null) return item.tipo === 'bloco' && temLegado(atual) ? 'atualizavel' : 'novo';
   const hLocal = hash(local);
   const hNovo = hash(item.conteudo);
   if (!reg) return hLocal === hNovo ? 'igual' : 'conflito';
+  if (hLocal === hNovo) return 'igual';
   if (hLocal !== reg.hash) return 'editado';
-  return hLocal === hNovo ? 'igual' : 'atualizavel';
+  return 'atualizavel';
 }
 
 export function planejar(itens, manifesto, projeto) {

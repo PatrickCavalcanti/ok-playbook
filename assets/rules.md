@@ -35,7 +35,7 @@ Este projeto foi configurado pela skill `ok-playbook`. Os patterns estão em `<p
 - Todo agente abre arquivo de feedback como primeira ação (ver `feedback-loop.md §6` e `agent.md §4.2`).
 - Status `pending-review` só o processador (`docs-review`) muda.
 - Subagentes não instalam deps, não tomam decisão arquitetural, não despacham outros subagentes (`subagent-dispatch.md §7`).
-- Política de modelos para subagentes: implementer/spec=Sonnet, code-quality/final=Opus (ver bloco "Workflow superpowers" abaixo).
+- Política de modelos para subagentes: implementer=Sonnet, revisão de fase (spec + qualidade)=Sonnet, revisão do conjunto/final=Opus (ver bloco "Workflow superpowers" abaixo).
 
 ### Memórias persistentes deste projeto
 
@@ -64,9 +64,8 @@ Roteamento fixo de modelos (não avaliar complexidade da task):
 |---|---|
 | Sessão principal (brainstorm + plan) | Opus |
 | Implementer (subagente que executa tarefas) | Sonnet |
-| Spec reviewer (subagente) | Sonnet |
-| Code quality reviewer (subagente) | Opus |
-| Final code reviewer (subagente) | Opus |
+| Revisão de fase — spec + qualidade (subagentes separados) | Sonnet |
+| Revisão do conjunto / final (gate da entrega) | Opus |
 
 Substitui a seção "Model Selection" do skill `subagent-driven-development` que usa linguagem vaga ("most capable", "fast cheap").
 
@@ -80,6 +79,8 @@ Substitui a seção "Model Selection" do skill `subagent-driven-development` que
 
 Referência completa: `<playbook-root>patterns/dev-process.md`. O essencial que
 vale em toda sessão:
+
+Precedência: instrução direta do usuário > este bloco > instruções globais do usuário (ex.: `~/.claude/CLAUDE.md`) e skills genéricas, onde conflitarem.
 
 | Fluxo | Quando | Forma |
 |---|---|---|
@@ -99,7 +100,7 @@ vale em toda sessão:
 - **Scripts de processo** (worktree, suíte global, banco de teste — o projeto
   implementa, o contrato é fixo): linha-sinal `OK`/`SUJO:`/`FALTA:` + exit code.
   Suíte global **nunca na mão**; a baseline torna a atribuição de falha fato.
-  Main suja na abertura = commit pendente → o script verifica, o usuário decide.
+  Main suja na abertura = commit pendente → o script verifica, o usuário decide. Nunca `reset`/`stash`/`checkout --` na main — preservar é commitar (vale para o controller, não só para subagente).
 - **Falha sem relação com o diff:** 1 linha, "não é minha", usuário decide.
 - **Pendências** em `<pendencias-root>` (template `<playbook-root>templates/pendencias.template.md`):
   um arquivo por sessão/plano, primeira coluna = área, registrar no ato. Antes de

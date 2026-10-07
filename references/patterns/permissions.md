@@ -227,7 +227,7 @@ node .claude/hooks/tools/medir-comandos.mjs
 # 2. Cobertura da versão atual do hook (baseline).
 node .claude/hooks/tools/hook-replay.mjs
 
-# 3. Portar o hook; ajustar PROJETO, SCRATCH, LEITURA e os whitelists com o
+# 3. Portar o hook; ajustar SCRATCH, LEITURA e os whitelists com o
 #    que o passo 1 mostrou.
 
 # 4. Suite de casos — os NEGATIVOS são o que importa.
@@ -292,7 +292,7 @@ O lado PowerShell é mais simples que o de Bash:
 
 ### Template canônico do playbook
 
-`.claude/hooks/auto-approve-project-bash.mjs` é o template canônico. Parametrizado por `PROJETO` / `SCRATCH` / `LEITURA` (ajustados na instalação, guiados pela medição do passo 1). Use-o como base pra novos hooks.
+`.claude/hooks/auto-approve-project-bash.mjs` é o template canônico. `PROJETO` é calculado em tempo de execução; `SCRATCH` / `LEITURA` são ajustados na instalação, guiados pela medição do passo 1. Use-o como base pra novos hooks.
 
 > **Renomeado.** Chamava-se `auto-approve-worktree-bash.js`, e o nome foi parte do problema: prometia menos do que precisava fazer, e por isso ninguém notou que o root do projeto — a maioria das chamadas — estava descoberto. Ao migrar, **remova o registro antigo de `settings.json`**, senão os dois hooks rodam.
 

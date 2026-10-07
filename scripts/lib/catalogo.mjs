@@ -1,7 +1,7 @@
 // Catálogo: tudo que a skill materializa, já renderizado para este projeto.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { renderSkill, resolverPlaceholders } from './render.mjs';
+import { lf, renderSkill, resolverPlaceholders } from './render.mjs';
 
 function listar(raiz, rel) {
   const dir = join(raiz, rel);
@@ -42,11 +42,10 @@ export function catalogo(raizSkill, paths, projetoAbs) {
   for (const origem of listar(raizSkill, 'assets/templates'))
     add(`template:${origem.split('/').pop()}`, 'arquivo', `${paths.docs}ok-playbook/templates/${origem.slice('assets/templates/'.length)}`, origem, resolverPlaceholders(ler(origem), paths));
 
-  // areas.mjs compara paths em minúsculas (canon()) — a raiz entra assim
-  const raizProjeto = projetoAbs.replace(/\\/g, '/').toLowerCase();
+  // hooks: conteúdo idêntico em qualquer checkout (a raiz é calculada em tempo de execução)
   for (const origem of listar(raizSkill, 'assets/hooks')) {
     const rel = origem.slice('assets/hooks/'.length);
-    add(`hook:${rel}`, 'arquivo', `.claude/hooks/${rel}`, origem, ler(origem).replace(/<PROJECT_ROOT>/g, raizProjeto));
+    add(`hook:${rel}`, 'arquivo', `.claude/hooks/${rel}`, origem, lf(ler(origem)));
   }
 
   for (const [tpl, chave, nomeDestino] of SEMENTES) {

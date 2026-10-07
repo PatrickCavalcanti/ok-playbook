@@ -1,5 +1,5 @@
 {
-  "_comment": "Permissões path-agnostic + hook canônico do ok-playbook. Para mesclar em .claude/settings.json do projeto. O bloco hooks registra o PreToolUse de auto-approve-project-bash.mjs (template em assets/hooks/) — a skill copia o JS pra .claude/hooks/ e ajusta PROJETO/SCRATCH/LEITURA pela medição do passo 1. Variantes path-specific de worktree NÃO existem mais aqui — viraram hook (ver patterns/worktree.md §6.2).",
+  "_comment": "Permissões path-agnostic + hook canônico do ok-playbook. Para mesclar em .claude/settings.json do projeto. O bloco hooks registra o PreToolUse de auto-approve-project-bash.mjs (template em assets/hooks/) — a skill copia o JS pra .claude/hooks/ e ajusta SCRATCH/LEITURA pela medição do passo 1. Variantes path-specific de worktree NÃO existem mais aqui — viraram hook (ver patterns/worktree.md §6.2).",
 
   "_comment_deny": "A lista de nunca mora aqui, e não na ausência de allow: com Bash(git *) liberado, um git push --force já estaria aprovado, e o whitelist do hook (que espelha as rules) herdaria a folga. deny ganha do hook e de qualquer rule larga. Ver patterns/permissions.md.",
 

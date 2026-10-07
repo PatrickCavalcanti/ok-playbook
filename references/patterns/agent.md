@@ -110,7 +110,7 @@ A skill é o ponto de invocação; o protocolo é o conteúdo. Separar permite r
 │   ├── <agent-1>.md                   # protocolo do agente
 │   ├── <agent-2>.md
 │   └── _index ou redirect             # (opcional, se a lista crescer)
-├── ok-design-architecture/            # partners agnósticos
+├── design-architecture/               # partners agnósticos
 │   ├── agent.md                       # este doc (ou link para o playbook)
 │   ├── feedback-loop.md
 │   └── ...

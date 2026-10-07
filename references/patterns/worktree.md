@@ -194,7 +194,7 @@ Detalhes e referências em [`./permissions.md §Quando rules não bastam`](./per
 
 Um único script Node.js intercepta toda call do Bash tool, prova em que **área** o comando roda, valida a chain inteira contra o whitelist daquela área, e retorna `allow` — ou se cala, devolvendo a decisão ao permission system normal (nunca nega).
 
-**Template canônico:** `.claude/hooks/` — dois hooks (`auto-approve-project-bash.mjs` e `auto-approve-project-powershell.mjs`) sobre uma política única em `lib/areas.mjs`, parametrizada por `PROJETO`/`SCRATCH`/`LEITURA` na instalação. Em máquina Windows os dois são necessários: a tool PowerShell responde por ~17% das chamadas e sofre a mesma quebra de matching.
+**Template canônico:** `.claude/hooks/` — dois hooks (`auto-approve-project-bash.mjs` e `auto-approve-project-powershell.mjs`) sobre uma política única em `lib/areas.mjs`, parametrizada por `SCRATCH`/`LEITURA` na instalação (`PROJETO` é calculado em tempo de execução). Em máquina Windows os dois são necessários: a tool PowerShell responde por ~17% das chamadas e sofre a mesma quebra de matching.
 
 > ⚠️ **O hook não é só de worktree — e essa foi a lição cara.** A versão anterior (`auto-approve-project-bash.js`) só casava `cd <projeto>/.worktrees/…`. Mas a medição em dois projetos mostrou que a maioria das chamadas Bash roda no **root** (648 root × 214 worktree num; 534 × 227 no outro), e que ~70% delas começam com `cd`. Resultado: cobertura real de **8,7%–17,3%**, com o prompt aparecendo o tempo todo enquanto o hook "existia e estava instalado". Rode o roteiro de medição de [`./permissions.md §Roteiro de diagnóstico`](./permissions.md) antes de assumir que o seu está cobrindo.
 
@@ -406,7 +406,7 @@ Pra o skill `update-config` (ou auditoria manual) rodar contra um projeto:
 
 ### Hook + permissões mínimas (§6.2, §6.3)
 
-- [ ] Existem `.claude/hooks/auto-approve-project-bash.mjs`, `auto-approve-project-powershell.mjs` e `lib/areas.mjs`, com `PROJETO` no path real (absoluto, lowercase, forward slashes, **com drive**) e `SCRATCH`/`LEITURA` preenchidos
+- [ ] Existem `.claude/hooks/auto-approve-project-bash.mjs`, `auto-approve-project-powershell.mjs` e `lib/areas.mjs`, com `SCRATCH`/`LEITURA` preenchidos (`PROJETO` é calculado em tempo de execução, sem preencher)
 - [ ] **NÃO** existe mais `.claude/hooks/auto-approve-worktree-bash.js` registrado (versão obsoleta — cobre só worktree)
 - [ ] Cobertura medida com `hook-replay.mjs` está acima de ~90%, e as recusas restantes foram classificadas como legítimas
 - [ ] `permissions.deny` tem a lista de nunca (`git push --force`, `git reset --hard`, `git clean -f`, install global)
