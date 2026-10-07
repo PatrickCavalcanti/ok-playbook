@@ -213,7 +213,7 @@ Um único script Node.js intercepta toda call do Bash tool, prova em que **área
 
 `git, node, npm, pnpm, npx, tsx, tsc, vitest, vite, eslint, prettier, python, ls, cat, find, grep, rg, head, tail, sed, awk, jq, cut, tr, sort, uniq, wc, diff, xargs, echo, printf, date, test, seq, docker, curl, mkdir, cp, mv, rm, touch, tee, cmd`
 
-> O template aplica `commandBasename()` ao head de cada segmento, então binários invocados via path relativo (`node_modules/.bin/vitest` → `vitest`) casam o whitelist. Isso é **essencial**: tanto na Strategy B quanto via junction, o tooling roda como `node_modules/.bin/<bin>` (porque `pnpm exec` quebra em worktree). Sem o basename, cada chamada geraria prompt. Inclua na whitelist os bins reais do projeto (ex.: `ok-bridge`, `drizzle-kit` para projetos ok-data-bridge; `vite`/`vitest` para Vite).
+> O template aplica `commandBasename()` ao head de cada segmento, então binários invocados via path relativo (`node_modules/.bin/vitest` → `vitest`) casam o whitelist. Isso é **essencial**: tanto na Strategy B quanto via junction, o tooling roda como `node_modules/.bin/<bin>` (porque `pnpm exec` quebra em worktree). Sem o basename, cada chamada geraria prompt. Inclua na whitelist os bins reais do projeto (ex.: `drizzle-kit` para projetos com Drizzle; `vite`/`vitest` para Vite).
 
 **Configuração em `.claude/settings.json`** (relativa a `${CLAUDE_PROJECT_DIR}`):
 

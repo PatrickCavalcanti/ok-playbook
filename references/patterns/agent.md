@@ -258,7 +258,7 @@ Sem o processador, feedbacks acumulam sem virar melhoria. Sem o materializador, 
 
 ## 12. Inspirações e evolução
 
-Padrão extraído da prática de projetos OK (`agents/power.md`, `agents/module.md`, `agents/session-review.md`, `agents/docs-review.md`, `agents/new-agent.md`). Para evoluir:
+Padrão extraído da prática de projetos reais (agentes de domínio como `power`, `module` e `session-review`, mais os agnósticos `docs-review` e `new-agent`). Para evoluir:
 
 - Novo papel canônico descoberto (além do trio §6) → §6.
 - Nova seção do protocolo provada útil em 2+ agentes → §4.2.

@@ -41,66 +41,70 @@ Este doc serve a três usos:
 ├── CLAUDE.md                              # entrypoint do Claude Code
 ├── ok-playbook.json                       # manifesto da skill (caminhos + estado de cada item)
 │
-└── <docs-root>/                           # default: docs/
-    │                                      # pai de todos os <*-root> de docs
+└── docs/                                  # chave `paths.docs` (default `docs/`)
+    │                                      # pai de todas as outras pastas de docs
     │
-    ├── project-architecture/              # <arch-root> — onde vive a arquitetura
+    ├── project-architecture/              # `paths.arch` — onde vive a arquitetura
     │   ├── _index.md                      # ⭐ MAPA central — entrypoint da arq
     │   ├── project.md                     # visão geral
     │   ├── <dimensão-1>.md                # ex: modules.md, powers.md, frontend.md
     │   ├── <dimensão-N>.md
-    │   ├── agents/                        # <agents-root> — agentes de domínio
+    │   ├── agents/                        # `paths.agents` — agentes de domínio
     │   │   └── <nome>.md
-    │   ├── templates/                     # templates do projeto
-    │   │   └── ARCHITECTURE.template.md
     │   └── ok-design-architecture/        # (opcional) partners — extensões
     │                                      #     filosóficas dos patterns canon
     │
-    ├── superpowers/                       # <superpowers-root> — ciclo de vida
+    ├── superpowers/                       # `paths.superpowers` — ciclo de vida
     │   ├── drafts/                        # rascunhos de feature
     │   ├── specs/                         # specs ativas
     │   │   └── done/                      # specs arquivadas
     │   └── plans/                         # planos ativos
     │       └── done/                      # planos arquivados
     │
-    ├── agent-feedback/                    # <backlog-root> — feedback de agentes
+    ├── agent-feedback/                    # `paths.backlog` — feedback de agentes
     │   ├── _template.md
     │   └── <agente>/YYYY-MM-DD_HHmm.md
     │
-    ├── _drafts/                           # <drafts-root> — rascunhos de agentes
+    ├── _drafts/                           # `paths.drafts` — rascunhos de agentes
     │   ├── _template.md
     │   └── YYYY-MM-DD-<nome>.md
     │
-    ├── pendencias/                        # <pendencias-root> — o que precisa
+    ├── pendencias/                        # `paths.pendencias` — o que precisa
     │   ├── _template.md                   #   ser feito e não impediu a entrega
     │   └── YYYY-MM-DD-<plano-ou-sessão>.md  # (ver patterns/dev-process.md §9)
     │
-    └── insights/                          # <insights-root> — insights & upstream
-        ├── _template.md
-        ├── YYYY-MM-DD-<tema>.md
-        └── upstream-proposals/            # (se contrib mode = `request`)
+    ├── insights/                          # `paths.insights` — insights & upstream
+    │   ├── _template.md
+    │   ├── YYYY-MM-DD-<tema>.md
+    │   └── upstream-proposals/            # (se contrib mode = `request`)
+    │
+    └── ok-playbook/                       # cópia local do playbook (patterns, templates, protocolos)
 ```
 
-Princípio chave: **todos os `<*-root>` são parentes de `<docs-root>`**. Não tem pasta de docs órfã fora dele. Isso simplifica o mental model do consumidor — "tudo que é doc do projeto está em `<docs-root>/`".
+(A árvore mostra os defaults; cada pasta marcada com `paths.*` é uma chave do manifesto `ok-playbook.json` e pode apontar para outro lugar.)
+
+Princípio chave: **todas as pastas de docs são filhas de `paths.docs`**. Não tem pasta de docs órfã fora dele. Isso simplifica o mental model do consumidor — "tudo que é doc do projeto está sob `paths.docs`".
 
 ---
 
 ## 4. Placeholders
 
-| Placeholder | Default | Significado |
+Os caminhos do projeto vivem no campo `paths` do manifesto `ok-playbook.json`. Cada chave abaixo tem um default e um significado; o canon usa nomes simbólicos nos docs-fonte, e a skill `ok-playbook` os troca pelo caminho real ao materializar — por isso os docs do projeto já mostram caminhos concretos.
+
+| Chave em `paths` | Default | Significado |
 |---|---|---|
-| `<docs-root>` | `docs/` | Pai de todos os `<*-root>`. Onde vive tudo que é doc |
-| `<arch-root>` | `<docs-root>/project-architecture/` | Raiz da arquitetura. Onde vive `_index.md` |
-| `<agents-root>` | `<arch-root>/agents/` | Agentes de domínio do projeto |
-| `<superpowers-root>` | `<docs-root>/superpowers/` | Ciclo de vida de specs/planos |
-| `<backlog-root>` | `<docs-root>/agent-feedback/` | Feedback de execuções de agentes |
-| `<drafts-root>` | `<docs-root>/_drafts/` | Rascunhos de novos agentes |
-| `<insights-root>` | `<docs-root>/insights/` | Insights de evolução + upstream-proposals |
-| `<pendencias-root>` | `<docs-root>/pendencias/` | Pendências de trabalho (≠ insight): um arquivo por sessão/plano, tabela com área na 1ª coluna ([`dev-process.md §9`](./dev-process.md)) |
+| `docs` | `docs/` | Pai de todas as outras pastas de docs. Onde vive tudo que é doc |
+| `arch` | `docs/project-architecture/` | Raiz da arquitetura. Onde vive `_index.md` |
+| `agents` | `docs/project-architecture/agents/` | Agentes de domínio do projeto |
+| `superpowers` | `docs/superpowers/` | Ciclo de vida de specs/planos |
+| `backlog` | `docs/agent-feedback/` | Feedback de execuções de agentes |
+| `drafts` | `docs/_drafts/` | Rascunhos de novos agentes |
+| `insights` | `docs/insights/` | Insights de evolução + upstream-proposals |
+| `pendencias` | `docs/pendencias/` | Pendências de trabalho (≠ insight): um arquivo por sessão/plano, tabela com área na 1ª coluna ([`dev-process.md §9`](./dev-process.md)) |
 
-`<playbook-root>` é a cópia dos patterns e templates dentro do projeto: `<docs-root>/ok-playbook/` (default `docs/ok-playbook/`). A skill `ok-playbook` a materializa na configuração; os placeholders chegam resolvidos nos arquivos do projeto. **Nunca hardcode o caminho em doc do canon** — escreva sempre `<playbook-root>`; um link com caminho fixo aponta pra nada quando o projeto escolhe outro `<docs-root>`, e falha em silêncio: markdown quebrado não emite erro, só deixa o agente sem a doc.
+A cópia dos patterns e templates dentro do projeto fica em `ok-playbook/` sob a pasta de docs (default `docs/ok-playbook/`); a skill `ok-playbook` a materializa na configuração. **Nunca hardcode o caminho em doc do canon** — escreva sempre o placeholder simbólico; um link com caminho fixo aponta pra nada quando o projeto escolhe outro `paths.docs`, e falha em silêncio: markdown quebrado não emite erro, só deixa o agente sem a doc.
 
-**Defaults são overridáveis.** Projeto pode escolher outros paths em `ok-playbook.json` (campo `paths`) — mas o canon recomenda os defaults para coerência cross-projeto.
+**Defaults são overridáveis.** Projeto pode escolher outros valores em `paths` no `ok-playbook.json` — mas o canon recomenda os defaults para coerência cross-projeto.
 
 ---
 
@@ -117,7 +121,7 @@ Princípio chave: **todos os `<*-root>` são parentes de `<docs-root>`**. Não t
 | **Quando ler qual documento** | Tabela `<situação> → <doc a ler>`. Inclui agentes |
 | Regras de manutenção | Tabela "Quando atualizar" + "Quem atualiza" + "O que nunca fazer" |
 | Fluxo de feedback e manutenção | Diagrama ASCII de produtor → backlog → processador → docs |
-| Estrutura em `<docs-root>/` relacionada | Tree ASCII dos outros `<*-root>` (backlog, drafts, insights, superpowers) |
+| Estrutura em `<docs-root>/` relacionada | Tree ASCII das outras pastas de docs (backlog, drafts, insights, superpowers) |
 
 ### 5.2 Estrutura recomendada (SHOULD)
 
@@ -162,7 +166,7 @@ execução do plano concluída
 |---|---|
 | [`agent.md`](./agent.md) | Define §5 "Estrutura de pastas" — esta convenção implementa `<agents-root>` e `<arch-root>` |
 | [`feedback-loop.md`](./feedback-loop.md) | Define `<backlog-root>`, `<drafts-root>`, `<insights-root>` — esta convenção posiciona como sub-pastas de `<docs-root>` |
-| [`code-design.md`](./code-design.md) | §9 prescreve `ARCHITECTURE.md` por unidade — template canônico vive em `<arch-root>/templates/ARCHITECTURE.template.md` |
+| [`code-design.md`](./code-design.md) | §9 prescreve `ARCHITECTURE.md` por unidade — template canônico vive em `<playbook-root>templates/ARCHITECTURE.md` |
 | [`memory.md`](./memory.md) | Memórias persistentes não vivem em `<docs-root>` — são `~/.claude/projects/.../memory/`. Não confundir |
 
 ---
@@ -182,17 +186,20 @@ Custos:
 
 ### 8.2 Adapter via placeholders
 
-Manter o path atual e overridar os placeholders em `ok-playbook.json` (campo `paths`):
+Manter o path atual e overridar as chaves correspondentes no campo `paths` de `ok-playbook.json`:
 
+```json
+{
+  "paths": {
+    "arch": "dev-prompts/project-architecture/"
+  }
+}
 ```
-| Placeholder | Path neste projeto |
-|---|---|
-| <arch-root> | dev-prompts/project-architecture/  (não-canônico — projeto antigo)
-| ...         | ...
-```
+
+(`arch` aponta para um layout não-canônico de projeto antigo; as chaves não declaradas ficam no default.)
 
 Custos:
-- Mental model fica ligeiramente menos coerente (placeholders apontam pra fora de `<docs-root>`).
+- Mental model fica ligeiramente menos coerente (as chaves apontam pra fora de `paths.docs`).
 - Novos consumidores do mesmo projeto têm que aprender o mapeamento custom.
 
 **Recomendação:** se o projeto tem < 100 arquivos arq, vale 8.1. Se tem mais ou é compartilhado com terceiros, considerar 8.2.
@@ -205,7 +212,7 @@ Custos:
 
 - [ ] `<arch-root>/_index.md` existe (MUST)
 - [ ] `<arch-root>/agents/` existe se há agentes domain (MUST se aplicável)
-- [ ] `<arch-root>/templates/ARCHITECTURE.template.md` existe (SHOULD)
+- [ ] `<playbook-root>templates/ARCHITECTURE.md` existe (SHOULD)
 - [ ] `<superpowers-root>/{drafts,specs,plans}/` existem (SHOULD se o projeto usa o ciclo)
 - [ ] `<backlog-root>/`, `<drafts-root>/`, `<insights-root>/` existem (MUST se há agentes)
 
@@ -216,11 +223,11 @@ Custos:
 - [ ] Tabela "Quando ler qual documento" (MUST)
 - [ ] Seção "Regras de manutenção" (MUST)
 - [ ] Diagrama "Fluxo de feedback e manutenção" (SHOULD)
-- [ ] Tree dos outros `<*-root>` em `<docs-root>` (SHOULD)
+- [ ] Tree das outras pastas de docs sob a pasta de docs (SHOULD)
 
 ### Coerência de placeholders
 
-- [ ] `<docs-root>` é pai dos outros `<*-root>` (MUST quando defaults usados)
+- [ ] `paths.docs` é pai das outras chaves de `paths` (MUST quando defaults usados)
 - [ ] `ok-playbook.json` (campo `paths`) reflete os paths reais (MUST)
 - [ ] Refs em `CLAUDE.md`, SKILLs, scripts apontam pros paths atuais (MUST)
 
@@ -240,7 +247,7 @@ Custos:
 | `_index.md` na raiz do projeto (fora de `<arch-root>`) | Confunde escopo — `_index.md` é da arquitetura, não do projeto inteiro |
 | Spec ativa sem plano (eternamente em `specs/`, nunca em `done/`) | Spec sem plano = trabalho não decidido; ou plano nasce, ou spec vira insight, ou descarta |
 | Plano em `plans/` depois da execução | Acumula confusão sobre "o que está em andamento" |
-| `<arch-root>` em path não-default sem `ok-playbook.json` atualizado | Outros agentes não acham o `_index.md` |
+| `paths.arch` com valor não-default sem `ok-playbook.json` atualizado | Outros agentes não acham o `_index.md` |
 | Múltiplos `_index.md` em sub-pastas | Cria ambiguidade — `_index.md` é único, no `<arch-root>/` |
 | Mistura specs com docs arq (specs vivendo em `<arch-root>/`) | Specs são histórico de decisão; docs arq são verdade atual — vidas distintas |
 
@@ -251,7 +258,7 @@ Custos:
 Padrão extraído da prática. Para evoluir:
 
 - Nova seção obrigatória do `_index.md` validada em 2+ projetos → §5.1.
-- Novo placeholder canônico (além dos 7 em §4) → §4.
+- Nova chave canônica de `paths` (além das 8 em §4) → §4.
 - Novo anti-padrão observado → §10.
 
 Mudanças aplicadas via PR + revisão. Sem mudança silenciosa.

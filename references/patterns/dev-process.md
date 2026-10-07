@@ -267,7 +267,7 @@ objetivo das worktrees paralelas. Nunca dizer "precisa de rebase" por reflexo
 
 ## 9. Pendências
 
-`<pendencias-root>` (default `docs/pendencias/`) — pasta **geral** do que
+A pasta de pendências (chave `paths.pendencias`; default `docs/pendencias/`) — pasta **geral** do que
 precisa ser feito e não impediu a entrega. **Pendência ≠ insight**: insight é
 melhoria observada; pendência é coisa a fazer.
 

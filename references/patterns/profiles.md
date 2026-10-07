@@ -176,7 +176,7 @@ Quando solicitado a avaliar um merge, gerar:
 
 ## Estrutura de cópia
 
-Cada perfil é um arquivo separado em `.claude/profiles/<nome>.md`, copiado pelo processo de instalação (INSTALL §3). O `CLAUDE.md` do projeto apenas referencia — não inline — o conteúdo dos perfis.
+A fonte dos perfis é este pattern (`<playbook-root>patterns/profiles.md`). Se o projeto quiser, pode manter uma cópia local de cada perfil em `.claude/profiles/<nome>.md` — é opcional e pertence ao projeto (a skill `ok-playbook` não a materializa). O `CLAUDE.md`/`AGENTS.md` do projeto apenas referencia — não inline — o conteúdo dos perfis.
 
 ---
 

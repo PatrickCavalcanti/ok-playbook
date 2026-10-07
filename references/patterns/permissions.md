@@ -17,7 +17,7 @@ Permissões apertadas demais geram prompts constantes de confirmação — o age
 | Categoria | Exemplos | Resolução |
 |---|---|---|
 | Path-agnostic | `Bash(git *)`, `Bash(node *)`, `WebSearch` | Entram no snippet, instalam diretos |
-| Path-specific | `Bash(cd e:/<projeto>/.worktrees/* && *)` | INSTALL pergunta o path e gera as variantes |
+| Path-specific | `Bash(cd e:/<projeto>/.worktrees/* && *)` | a skill `ok-playbook` (modo configurar) pergunta o path e gera as variantes |
 | SO-specific | `Bash(cmd //c "mklink *")` (Windows) | Incluídas no snippet, marcadas como Windows-only |
 
 ---

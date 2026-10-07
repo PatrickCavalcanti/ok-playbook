@@ -20,8 +20,6 @@ project-architecture/
 ├── ...
 ├── agents/                 # agentes de domínio do projeto
 │   └── <nome>.md           # protocolo do agente
-├── templates/              # templates do projeto
-│   └── ARCHITECTURE.template.md
 └── ok-design-architecture/ # (opcional) partners — extensões filosóficas
     └── *-partners.md
 ```
@@ -100,22 +98,22 @@ new-agent executa (com rascunho aprovado, canon: <playbook-root>agents/new-agent
 
 ---
 
-## Estrutura em `<docs-root>/` relacionada
+## Estrutura de docs relacionada
 
 ```
-<docs-root>/                            # default: docs/
-├── project-architecture/               # <arch-root> — esta pasta
-├── superpowers/                        # <superpowers-root> — ciclo de specs/planos
+docs/                                   # `paths.docs` (default `docs/`)
+├── project-architecture/               # `paths.arch` — esta pasta
+├── superpowers/                        # `paths.superpowers` — ciclo de specs/planos
 │   ├── drafts/                         # rascunhos de feature
 │   ├── specs/{,done/}                  # specs ativas + arquivadas
 │   └── plans/{,done/}                  # planos ativos + arquivados
-├── agent-feedback/                     # <backlog-root>
+├── agent-feedback/                     # `paths.backlog`
 │   ├── _template.md
 │   └── <agente>/
-├── _drafts/                            # <drafts-root>
+├── _drafts/                            # `paths.drafts`
 │   ├── _template.md
 │   └── YYYY-MM-DD-<nome>.md
-└── insights/                           # <insights-root>
+└── insights/                           # `paths.insights`
     ├── _template.md
     ├── YYYY-MM-DD-<tema>.md
     └── upstream-proposals/             # (se modo `request`)

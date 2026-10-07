@@ -27,7 +27,7 @@ Este projeto foi configurado pela skill `ok-playbook`. Os patterns estão em `<p
   - `dev-process.md` — **o processo de trabalho**: quatro fluxos, plano, reviews dirigidos, scripts de processo, entrega, pendências, sinal de atenção
   - `docs-structure.md` — hierarquia `<docs-root>` + `_index.md` da arquitetura + ciclo de specs/planos
 
-- **Agents agnósticos** (skills em `.claude/skills/`): `docs-review`, `new-agent`, `permissions-review`, `playbook-contribute`. Revalidar contra o canon: rode a skill `ok-playbook` no modo atualizar.
+- **Agents agnósticos** (skills em `.claude/skills/`; Codex: `.agents/skills/`): `docs-review`, `new-agent`, `permissions-review`, `playbook-contribute`. Revalidar contra o canon: rode a skill `ok-playbook` no modo atualizar.
 - **Templates:** `<playbook-root>templates/` — feedback, draft, insight, ARCHITECTURE, `_index`
 
 ### Regras invariantes vindas do playbook

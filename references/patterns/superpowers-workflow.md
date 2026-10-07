@@ -2,7 +2,7 @@
 
 > **Escopo:** project-level. O resumo entra no `CLAUDE.md` do projeto via o bloco de regras do playbook. Este doc é a referência detalhada.
 
-Política da OK para uso dos skills `superpowers-marketplace` (plugin do Claude Code) no fluxo brainstorming → writing-plans → subagent-driven-development. Não substitui a documentação interna dos skills — define como integrá-los, qual modelo usar em cada papel, e quando rodar testes/reviews. Cada projeto consumidor pode ajustar a política, mas o default da OK é o descrito aqui.
+Política deste playbook para uso dos skills `superpowers-marketplace` (plugin do Claude Code) no fluxo brainstorming → writing-plans → subagent-driven-development. Não substitui a documentação interna dos skills — define como integrá-los, qual modelo usar em cada papel, e quando rodar testes/reviews. Cada projeto consumidor pode ajustar a política, mas o default é o descrito aqui.
 
 ---
 
@@ -51,7 +51,7 @@ a taxa cair.
 > prompt dirigido das oito formas). Este bloco resume o que substitui o default
 > do skill:
 
-| Etapa | Default do skill | Política OK |
+| Etapa | Default do skill | Política aqui |
 |---|---|---|
 | Implementer roda steps da task | sim | sim |
 | Implementer commita ao final da task | sim | sim — **exceto em fase paralela**, onde quem commita é o controller (ver §Paralelismo) |
