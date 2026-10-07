@@ -2,45 +2,71 @@
 /**
  * worktree.mjs — criar e fechar worktrees com as pegadinhas já resolvidas.
  *
- *   node scripts/worktree.mjs new <nome> [--base <branch>] [--plano <path>] [--dry-run]
+ *   node scripts/worktree.mjs new <nome> [--plano <path>] [--commit-abertura] [--base <branch>] [--dry-run]
  *   node scripts/worktree.mjs close <nome> [--keep-branch] [--force] [--dry-run]
  *   node scripts/worktree.mjs list
  *
+ * CONTRATO
+ *
+ * A última linha da saída é sempre um SINAL, e o exit code acompanha:
+ *
+ *   OK <path-da-worktree>      exit 0   pronta, deps validadas
+ *   SUJO: <n> arquivo(s)       exit 2   a main tem mudança não commitada; NADA
+ *                                       foi tocado e a worktree NÃO foi criada.
+ *                                       O agente pergunta ao usuário:
+ *                                         "commita tudo"    → re-rodar com --commit-abertura
+ *                                         "commita separado"→ agente commita e re-roda
+ *   FALTA: <o quê>             exit 1   pré-requisito ausente, nomeado
+ *
+ * Main suja é COMMIT PENDENTE, não estado a preservar: se está na main, é
+ * estável. Preservar é commitar — este script nunca faz reset/stash/checkout --.
+ * `--commit-abertura` faz UM commit padrão ("chore(main): abertura de worktree —
+ * snapshot") com a lista de arquivos no corpo, e segue. A worktree só nasce com
+ * a main limpa, então o plano vai junto por consequência (`--plano` só VALIDA
+ * que ele está tracked).
+ *
  * POR QUE ESTE SCRIPT EXISTE
  *
- * Criar worktree é `git worktree add` — o resto é que custa: colisão de branch
- * entre sessões paralelas, arquivo untracked que não atravessa (o `.env` e o
- * PLANO, principalmente), deps, e um cleanup que no Windows pode **apagar o
- * node_modules do checkout principal** se a ordem estiver errada. Cada uma
- * dessas já mordeu de verdade. O script é a forma canônica dessas etapas.
+ * Criar worktree é `git worktree add` — o resto é que custa: main suja que a
+ * worktree não herda, colisão de branch entre sessões paralelas, `.env` que não
+ * atravessa, deps, submódulo vazio, e um cleanup que no Windows pode **apagar o
+ * node_modules do checkout principal** se a ordem estiver errada.
  *
- * ⚠️ A REGRA QUE MAIS IMPORTA (§9 de patterns/worktree.md): junction PRIMEIRO,
- * worktree depois. No Windows, delete recursivo **segue o reparse point** e
- * apaga o conteúdo do alvo — ou seja, o `node_modules` da main. O `close` aqui
- * remove todo junction com `rmdir` (que remove só o link) antes de encostar em
- * `git worktree remove`, e NUNCA usa delete recursivo.
+ * ⚠️ A REGRA QUE MAIS IMPORTA: junction PRIMEIRO, worktree depois. No Windows,
+ * delete recursivo **segue o reparse point** e apaga o conteúdo do alvo. O
+ * `close` aqui remove todo junction/symlink com `rmdir` (que remove só o link)
+ * antes de encostar em `git worktree remove`, e NUNCA usa delete recursivo.
  *
- * EXTENSÃO POR PROJETO — `worktree.config.mjs` no root (opcional):
+ * DEPS — instalação real na worktree, escolhida pelo lockfile na raiz:
+ *   pnpm-lock.yaml    → pnpm install
+ *   package-lock.json → npm ci
+ *   yarn.lock         → yarn install --frozen-lockfile
+ *   nenhum            → pula, com aviso (não é falha)
+ * Não usar junction de node_modules com pnpm: o verify-deps tenta purgar o
+ * modules dir, com risco de atingir o checkout principal.
+ *
+ * EXTENSÃO POR PROJETO — `worktree.config.mjs` no root (OPCIONAL; ausente =
+ * defaults abaixo). Chaves aceitas:
  *
  *   export default {
- *     base: 'main',                    // branch base do `git worktree add`
- *     branchPrefix: 'feature/',
- *     copiar: ['.env'],                // untracked que precisa atravessar
- *     deps: 'pnpm',                    // 'pnpm' | 'npm' | 'none' | async fn(ctx)
+ *     base: 'main',                    // branch base do `git worktree add` (default 'main')
+ *     branchPrefix: 'feature/',        // prefixo da branch (default 'feature/')
+ *     copiar: ['.env'],                // untracked que precisa atravessar (default ['.env'])
+ *     deps: 'pnpm',                    // 'pnpm' | 'npm' | 'yarn' | 'none' | async fn(ctx)
+ *                                      //   (ausente = detectar pelo lockfile)
  *     async posCriar(ctx) {},          // roda depois do install
  *     async preFechar(ctx) {},         // roda antes de remover
+ *     async posFechar(ctx) {},         // roda depois de remover (só reporta)
  *   }
  *
  * `ctx` = { raiz, worktree, nome, branch, run(cmd), log(msg), dryRun }
  *
  * Em --dry-run os hooks do projeto NÃO rodam: a worktree ainda não existe e
  * qualquer instalador quebraria. Dry-run mostra o plano, não exercita.
- *
- * Projeto com estratégia de deps própria (monorepo com junction seletivo, por
- * exemplo) passa `deps` como função e chama o próprio script de lá.
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -49,7 +75,7 @@ import { pathToFileURL } from 'node:url';
 
 const argv = process.argv.slice(2);
 const comando = argv[0];
-const nome = argv.find((a, i) => i > 0 && !a.startsWith('--'));
+const nome = argv.find((a, i) => i > 0 && !a.startsWith('--') && argv[i - 1] !== '--plano' && argv[i - 1] !== '--base');
 const flag = (f) => argv.includes(f);
 const valor = (f, padrao) => (argv.includes(f) ? argv[argv.indexOf(f) + 1] : padrao);
 
@@ -57,7 +83,11 @@ const dryRun = flag('--dry-run');
 const prefixo = dryRun ? '[dry-run] ' : '';
 
 const log = (m) => console.log(m);
-const erro = (m) => { console.error(`\n✖ ${m}\n`); process.exit(1); };
+// Sinais do contrato — sempre a ÚLTIMA linha, exit code acompanha.
+const falta = (m) => { console.log(`\nFALTA: ${m}`); process.exit(1); };
+const sujo = (m) => { console.log(`\nSUJO: ${m}`); process.exit(2); };
+const ok = (m) => { console.log(`\nOK ${m}`); process.exit(0); };
+const erro = falta; // erro operacional é FALTA para quem consome o sinal
 
 function run(cmd, opts = {}) {
   log(`  ${prefixo}$ ${cmd}`);
@@ -80,7 +110,7 @@ const norm = (p) => path.resolve(p).replace(/\\/g, '/');
 // ── contexto do repo ─────────────────────────────────────────────────────────
 
 const raiz = norm(capture('git rev-parse --show-toplevel') || process.cwd());
-if (!raiz) erro('não estamos num repositório git.');
+if (!capture('git rev-parse --show-toplevel')) erro('não estamos num repositório git.');
 
 /** O root da lista é sempre o checkout principal — não rodar a partir de worktree. */
 function checkoutPrincipal() {
@@ -103,78 +133,156 @@ async function carregaConfig() {
 
 // ── subcomandos ──────────────────────────────────────────────────────────────
 
+/**
+ * Estado da main: linhas do `git status --porcelain` (vazio = limpa).
+ * `.worktrees/` não conta: são as próprias worktrees (o .gitignore deve cobri-lo).
+ */
+function estadoDaMain() {
+  const s = capture('git status --porcelain --untracked-files=all', raiz);
+  return s ? s.split('\n').filter((l) => l && !l.slice(3).startsWith('.worktrees/')) : [];
+}
+
+/**
+ * Commit de abertura: UM commit, mensagem padrão, lista no corpo. `add -A` +
+ * `commit` na mesma chamada porque sessões paralelas compartilham o índice.
+ */
+function commitDeAbertura(linhas) {
+  const corpo = linhas.map((l) => `- ${l.slice(3)}`).join('\n');
+  const msg = `chore(main): abertura de worktree — snapshot\n\nArquivos não commitados na main no momento de abrir a worktree "${nome}":\n\n${corpo}\n`;
+  const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wt-msg-')), 'msg.txt');
+  fs.writeFileSync(tmp, msg);
+  run(`git add -A -- . ":(exclude).worktrees" && git commit -q -F "${tmp}"`, { cwd: raiz });
+  return capture('git rev-parse --short HEAD', raiz);
+}
+
+/** Nome livre: nem diretório nem branch existem. Colisão → sufixo -2, -3… */
+function nomeLivre(base, prefixoBranch) {
+  const emUso = capture('git worktree list --porcelain');
+  for (let i = 1; i < 50; i++) {
+    const n = i === 1 ? base : `${base}-${i}`;
+    const branch = `${prefixoBranch}${n}`;
+    const dir = path.join(raiz, '.worktrees', n);
+    const branchExiste = !!capture(`git rev-parse --verify --quiet ${branch}`);
+    const checada = emUso.includes(`branch refs/heads/${branch}`);
+    if (!fs.existsSync(dir) && !branchExiste && !checada) return { n, branch, dir, sufixado: i > 1 };
+  }
+  falta(`não achei nome livre para "${base}" (tentei até -49).`);
+}
+
+/** Comando de instalação a partir da config ou do lockfile; null = nada a instalar. */
+function comandoDeDeps(cfgDeps) {
+  const tem = (f) => fs.existsSync(path.join(raiz, f));
+  const porGerenciador = {
+    pnpm: 'pnpm install',
+    npm: tem('package-lock.json') ? 'npm ci' : 'npm install',
+    yarn: 'yarn install --frozen-lockfile',
+  };
+  if (cfgDeps && porGerenciador[cfgDeps]) return porGerenciador[cfgDeps];
+  if (tem('pnpm-lock.yaml')) return porGerenciador.pnpm;
+  if (tem('package-lock.json')) return porGerenciador.npm;
+  if (tem('yarn.lock')) return porGerenciador.yarn;
+  return null;
+}
+
 async function novo(cfg) {
-  if (!nome) erro('uso: worktree.mjs new <nome> [--base <branch>] [--plano <path>]');
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(nome)) erro(`nome inválido: "${nome}" — use kebab-case.`);
+  if (!nome) falta('uso: worktree.mjs new <nome> [--plano <path>] [--commit-abertura] [--base <branch>]');
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(nome)) falta(`nome inválido: "${nome}" — use kebab-case.`);
 
   const base = valor('--base', cfg.base || 'main');
-  const branch = `${cfg.branchPrefix ?? 'feature/'}${nome}`;
-  const destino = path.join(raiz, '.worktrees', nome);
+  if (!capture(`git rev-parse --verify --quiet ${base}`)) falta(`branch base não existe: ${base}`);
 
-  log(`\n▸ criando worktree "${nome}"${dryRun ? ' [DRY RUN]' : ''}`);
-  log(`  branch: ${branch}   base: ${base}`);
-  log(`  destino: ${destino}\n`);
+  log(`\n▸ worktree "${nome}"${dryRun ? ' [DRY RUN]' : ''}   base: ${base}`);
 
-  // ── colisões: sessões paralelas reusam nome e se atropelam ────────────────
-  if (fs.existsSync(destino)) erro(`já existe: ${destino}`);
-  if (capture(`git rev-parse --verify --quiet ${branch}`)) {
-    erro(`a branch "${branch}" já existe. Outra sessão pode estar nela — escolha outro nome ou finalize aquela primeiro.`);
+  // ── 1. estado da main ─────────────────────────────────────────────────────
+  // Main suja é commit pendente. Sem --commit-abertura: SUJO e nada é tocado.
+  let linhas = estadoDaMain();
+  if (linhas.length) {
+    log(`\n  main com ${linhas.length} mudança(s) não commitada(s):`);
+    for (const l of linhas.slice(0, 40)) log(`    ${l}`);
+    if (linhas.length > 40) log(`    … (+${linhas.length - 40})`);
+    if (!flag('--commit-abertura')) {
+      log('\n  nada foi tocado. Decisão do usuário:');
+      log('    "commita tudo"     → re-rodar com --commit-abertura');
+      log('    "commita separado" → commitar agrupado e re-rodar');
+      sujo(`${linhas.length} arquivo(s) não commitado(s) na main — worktree NÃO criada`);
+    }
+    if (dryRun) log('\n  [dry-run] commit de abertura rodaria aqui');
+    else {
+      const sha = commitDeAbertura(linhas);
+      log(`\n  ✓ commit de abertura ${sha} levou ${linhas.length} arquivo(s)`);
+      linhas = estadoDaMain();
+      if (linhas.length) falta(`main ainda suja depois do commit de abertura (${linhas.length}) — confira à mão.`);
+    }
+  } else {
+    log('  ✓ main limpa');
   }
-  const emUso = capture('git worktree list --porcelain')
-    .split('\n\n').find((b) => b.includes(`branch refs/heads/${branch}`));
-  if (emUso) erro(`a branch "${branch}" já está checada em outra worktree.`);
-  if (!capture(`git rev-parse --verify --quiet ${base}`)) erro(`branch base não existe: ${base}`);
 
-  // ── .gitignore ────────────────────────────────────────────────────────────
+  // ── 2. plano: só valida (a worktree nasce da main limpa, então ele vai) ───
+  const plano = valor('--plano', null);
+  if (plano) {
+    const abs = path.isAbsolute(plano) ? plano : path.join(raiz, plano);
+    if (!fs.existsSync(abs)) falta(`plano não existe: ${plano}`);
+    const rel = path.relative(raiz, abs).replace(/\\/g, '/');
+    if (!capture(`git ls-files --error-unmatch -- "${rel}"`, raiz)) falta(`plano não está tracked no git: ${rel} — commite antes.`);
+    log(`  ✓ plano tracked: ${rel}`);
+  }
+
+  // ── 3. nome/branch únicos ─────────────────────────────────────────────────
+  const { n, branch, dir: destino, sufixado } = nomeLivre(nome, cfg.branchPrefix ?? 'feature/');
+  if (sufixado) log(`  ⚠ "${nome}" já em uso (sessão paralela?) — usando "${n}"`);
+  log(`  branch: ${branch}\n  destino: ${destino}`);
+
   const gi = path.join(raiz, '.gitignore');
-  const cobre = fs.existsSync(gi) && /^\.worktrees\/?$/m.test(fs.readFileSync(gi, 'utf8'));
-  if (!cobre) log('  ⚠ .gitignore não cobre `.worktrees/` — acrescente antes de commitar.\n');
+  const cobre = fs.existsSync(gi) && /^\/?\.worktrees\/?$/m.test(fs.readFileSync(gi, 'utf8'));
+  if (!cobre) log('  ⚠ .gitignore não cobre `.worktrees/` — acrescente antes de commitar.');
 
+  // ── 4. criação ────────────────────────────────────────────────────────────
+  log('');
   run(`git worktree add "${destino}" -b ${branch} ${base}`);
 
-  // ── untracked que precisa atravessar ──────────────────────────────────────
-  // `git worktree add` parte do COMMIT: nada não-commitado vai junto. O `.env`
-  // e o arquivo de plano são os que sempre faltam — sem o plano, o implementer
-  // despachado lá dentro improvisa.
-  const copiar = [...(cfg.copiar ?? ['.env']), valor('--plano', null)].filter(Boolean);
-  if (copiar.length) {
-    log('\n  arquivos untracked levados junto:');
-    for (const rel of copiar) {
-      const de = path.isAbsolute(rel) ? rel : path.join(raiz, rel);
-      if (!fs.existsSync(de)) { log(`    – ${rel} (não existe, pulando)`); continue; }
-      const para = path.join(destino, path.relative(raiz, de));
-      log(`    ✓ ${prefixo}${rel}`);
-      if (!dryRun) {
-        fs.mkdirSync(path.dirname(para), { recursive: true });
-        fs.copyFileSync(de, para);
-      }
-    }
+  // `.env` é untracked por desenho e não atravessa; o plano não precisa mais.
+  for (const rel of cfg.copiar ?? ['.env']) {
+    const de = path.join(raiz, rel);
+    if (!fs.existsSync(de)) { log(`  – ${rel} (não existe, pulando)`); continue; }
+    if (!dryRun) { fs.mkdirSync(path.dirname(path.join(destino, rel)), { recursive: true }); fs.copyFileSync(de, path.join(destino, rel)); }
+    log(`  ✓ ${prefixo}${rel} copiado`);
   }
 
-  // ── deps ──────────────────────────────────────────────────────────────────
-  const ctx = { raiz, worktree: destino, nome, branch, run, log, dryRun };
+  // ── 5. deps + submódulos ──────────────────────────────────────────────────
+  const ctx = { raiz, worktree: destino, nome: n, branch, run, log, dryRun };
+  let instalou = false;
   log('\n  dependências:');
-  if (dryRun) {
-    // Em dry-run a worktree não existe, então qualquer instalador (ou script
-    // de junction do projeto) quebraria ao encontrar o diretório ausente.
-    // Dry-run mostra o plano; não exercita sub-script.
-    log(`    (dry-run: ${typeof cfg.deps === 'function' ? 'cfg.deps() do projeto' : (cfg.deps || 'install padrão')} rodaria aqui)`);
-  } else if (typeof cfg.deps === 'function') {
-    await cfg.deps(ctx);
+  if (typeof cfg.deps === 'function') {
+    if (dryRun) log('    (dry-run: cfg.deps() do projeto rodaria aqui)');
+    else { await cfg.deps(ctx); instalou = true; }
   } else if (cfg.deps === 'none') {
     log('    (config: none — pulando)');
   } else {
-    // Default: install REAL na worktree. Junction com pnpm é perigoso — o
-    // verify-deps-before-run tenta purgar o modules dir (worktree.md §5.2).
-    const pm = cfg.deps || (fs.existsSync(path.join(raiz, 'pnpm-lock.yaml')) ? 'pnpm' : 'npm');
-    run(`${pm} install`, { cwd: dryRun ? undefined : destino });
+    const cmd = comandoDeDeps(cfg.deps);
+    if (!cmd) log('    ⚠ nenhum lockfile na raiz (pnpm-lock.yaml, package-lock.json, yarn.lock) — instalação pulada.');
+    else { run(cmd, { cwd: destino }); instalou = !dryRun; }
+  }
+  // `git worktree add` não inicializa submódulo — vêm vazios.
+  if (!dryRun && fs.existsSync(path.join(raiz, '.gitmodules'))) {
+    log('\n  submódulos:');
+    run('git submodule update --init --recursive', { cwd: destino, tolerante: true, silencioso: true });
+  }
+  if (cfg.posCriar) { log('\n  posCriar (config do projeto):'); if (!dryRun) await cfg.posCriar(ctx); else log('    (dry-run: pulado)'); }
+
+  // ── 6. validação (auto-validação é o contrato) ────────────────────────────
+  if (!dryRun) {
+    const faltas = [];
+    if (instalou && typeof cfg.deps !== 'function' && fs.existsSync(path.join(raiz, 'package.json'))
+      && !fs.existsSync(path.join(destino, 'node_modules'))) faltas.push('node_modules ausente na worktree');
+    if (fs.existsSync(path.join(raiz, '.gitmodules'))) {
+      const status = capture('git submodule status --recursive', destino);
+      if (status.split('\n').some((l) => l.startsWith('-'))) faltas.push('submódulo não inicializado');
+    }
+    if (faltas.length) falta(`worktree criada em ${destino}, mas: ${faltas.join('; ')}`);
   }
 
-  if (cfg.posCriar) { log('\n  posCriar (config do projeto):'); await cfg.posCriar(ctx); }
-
-  log(`\n✔ worktree pronta: ${destino}`);
-  log(`  próximo: trabalhe a partir de lá — NÃO prefixe \`cd\` nos comandos,`);
-  log(`  o cwd persiste (ver patterns/command-forms.md).\n`);
+  log(`\n  próximo: trabalhe a partir de lá — NÃO prefixe \`cd\` nos comandos, o cwd persiste.`);
+  ok(dryRun ? `[dry-run] ${destino}` : destino);
 }
 
 async function fechar(cfg) {
@@ -183,23 +291,23 @@ async function fechar(cfg) {
   // A branch vem da PRÓPRIA worktree, não da convenção de nome. Deduzir
   // `feature/<nome>` faz o `git log base..branch` apontar pra uma ref que não
   // existe, e a checagem de commits não-mergeados **passa em silêncio** — que
-  // é a pior falha possível num comando destrutivo. (Caso real: worktree
-  // `operacoes-assincronas` estava em `feat/operacoes-assincronas-fase-3`.)
+  // é a pior falha possível num comando destrutivo.
   const branch = capture('git rev-parse --abbrev-ref HEAD', destino)
     || `${cfg.branchPrefix ?? 'feature/'}${nome}`;
 
   if (!fs.existsSync(destino)) {
     log(`\n  worktree não existe em ${destino} — só limpando referências.`);
     run('git worktree prune');
-    return;
+    if (cfg.posFechar && !dryRun) { log('\n  posFechar (config do projeto):'); await cfg.posFechar({ raiz, worktree: destino, nome, branch, run, log, dryRun }); }
+    ok(`worktree "${nome}" não existia — referências limpas`);
   }
 
   log(`\n▸ fechando worktree "${nome}"${dryRun ? ' [DRY RUN]' : ''}\n`);
 
   // ── trabalho não salvo ────────────────────────────────────────────────────
-  const sujo = capture('git status --porcelain', destino);
-  if (sujo && !flag('--force')) {
-    log(sujo.split('\n').slice(0, 10).map((l) => `    ${l}`).join('\n'));
+  const naoSalvo = capture('git status --porcelain', destino);
+  if (naoSalvo && !flag('--force')) {
+    log(naoSalvo.split('\n').slice(0, 10).map((l) => `    ${l}`).join('\n'));
     erro('a worktree tem mudanças não commitadas (acima). Commite, ou use --force para descartar.');
   }
   const base = cfg.base || 'main';
@@ -225,7 +333,7 @@ async function fechar(cfg) {
   // node_modules do checkout principal. `rmdir` remove só o link.
   log('\n  removendo junctions/symlinks (antes de tocar na worktree):');
   const links = achaLinks(destino);
-  const MOSTRAR = 12; // junction seletivo gera centenas — não despejar tudo
+  const MOSTRAR = 12;
   let n = 0;
   for (const p of links) {
     if (n < MOSTRAR) log(`    ${prefixo}rmdir ${path.relative(destino, p)}`);
@@ -237,16 +345,40 @@ async function fechar(cfg) {
   }
   log(n ? `    (${n} removidos)` : '    (nenhum)');
 
-  // ── remoção ───────────────────────────────────────────────────────────────
-  log('');
-  run(`git worktree remove "${destino}"${flag('--force') ? ' --force' : ''}`);
-  run('git worktree prune');
-  if (!flag('--keep-branch')) {
-    // `-d` só apaga branch já mergeada — nunca `-D` aqui.
-    run(`git branch -d ${branch}`, { silencioso: true, stdio: 'inherit' });
+  // ── submódulos ANTES da remoção ───────────────────────────────────────────
+  // `git worktree remove` recusa worktree com submódulo e pela doc só sai com
+  // --force. deinit (limpa o conteúdo) + remove --force é seguro porque as
+  // guardas de trabalho não salvo e commits não mergeados já rodaram ACIMA.
+  const temSubmodulo = fs.existsSync(path.join(destino, '.gitmodules'));
+  if (temSubmodulo) {
+    log('\n  desinicializando submódulos:');
+    run('git submodule deinit -f --all', { cwd: destino, tolerante: true, silencioso: true });
   }
 
-  log(`\n✔ worktree "${nome}" fechada.\n`);
+  // ── remoção ───────────────────────────────────────────────────────────────
+  // Tolerante: no Windows o remove pode apagar conteúdo + registro e falhar
+  // só ao apagar a PASTA (processo com ela como cwd). Abortar aqui deixa estado
+  // meio-removido — pior que terminar o serviço.
+  log('');
+  if (norm(process.cwd()).toLowerCase().startsWith(norm(destino).toLowerCase())) process.chdir(raiz);
+  run(`git worktree remove "${destino}"${(flag('--force') || temSubmodulo) ? ' --force' : ''}`, { tolerante: true });
+  run('git worktree prune');
+  if (!dryRun && fs.existsSync(destino)) {
+    try { fs.rmdirSync(destino); log(`  pasta vazia removida: ${destino}`); }
+    catch { /* não vazia ou presa — reportado abaixo */ }
+  }
+  if (!flag('--keep-branch')) {
+    // `-d` só apaga branch já mergeada — nunca `-D` aqui.
+    run(`git branch -d ${branch}`, { silencioso: true, stdio: 'inherit', tolerante: true });
+  }
+
+  if (cfg.posFechar && !dryRun) { log('\n  posFechar (config do projeto):'); await cfg.posFechar(ctx); }
+  else if (cfg.posFechar) log('\n  posFechar (config do projeto): (dry-run: pulado)');
+
+  if (!dryRun && fs.existsSync(destino)) {
+    falta(`worktree desregistrada, mas a pasta ${destino} ainda existe (processo com ela aberta como cwd? saia dela e apague à mão).`);
+  }
+  ok(`worktree "${nome}" fechada`);
 }
 
 /**
@@ -282,11 +414,13 @@ else {
   log(`
 worktree.mjs — criar e fechar worktrees
 
-  new <nome>    [--base <branch>] [--plano <path>] [--dry-run]
+  new <nome>    [--plano <path>] [--commit-abertura] [--base <branch>] [--dry-run]
   close <nome>  [--keep-branch] [--force] [--dry-run]
   list
 
-Extensão por projeto: worktree.config.mjs no root (ver cabeçalho do script).
+Sinais (última linha): OK <path> (0) | SUJO: … (2) | FALTA: … (1)
+
+Extensão por projeto: worktree.config.mjs no root, opcional (ver cabeçalho do script).
 `);
   process.exit(comando ? 1 : 0);
 }
