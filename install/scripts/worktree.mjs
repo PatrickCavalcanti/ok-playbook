@@ -101,7 +101,8 @@ function run(cmd, opts = {}) {
 }
 
 function capture(cmd, cwd) {
-  try { return execSync(cmd, { encoding: 'utf8', cwd, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
+  // trimEnd (não trim): o espaço inicial da 1ª linha do `status --porcelain` é significativo.
+  try { return execSync(cmd, { encoding: 'utf8', cwd, stdio: ['ignore', 'pipe', 'ignore'] }).trimEnd(); }
   catch { return ''; }
 }
 
@@ -149,9 +150,14 @@ function estadoDaMain() {
 function commitDeAbertura(linhas) {
   const corpo = linhas.map((l) => `- ${l.slice(3)}`).join('\n');
   const msg = `chore(main): abertura de worktree — snapshot\n\nArquivos não commitados na main no momento de abrir a worktree "${nome}":\n\n${corpo}\n`;
-  const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wt-msg-')), 'msg.txt');
-  fs.writeFileSync(tmp, msg);
-  run(`git add -A -- . ":(exclude).worktrees" && git commit -q -F "${tmp}"`, { cwd: raiz });
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-msg-'));
+  const tmp = path.join(tmpDir, 'msg.txt');
+  try {
+    fs.writeFileSync(tmp, msg);
+    run(`git add -A && git commit -q -F "${tmp}"`, { cwd: raiz });
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
   return capture('git rev-parse --short HEAD', raiz);
 }
 
@@ -189,6 +195,7 @@ async function novo(cfg) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(nome)) falta(`nome inválido: "${nome}" — use kebab-case.`);
 
   const base = valor('--base', cfg.base || 'main');
+  if (!/^[A-Za-z0-9._\/-]+$/.test(base)) falta(`--base inválido: "${base}" — use só letras, dígitos, . _ / -`);
   if (!capture(`git rev-parse --verify --quiet ${base}`)) falta(`branch base não existe: ${base}`);
 
   log(`\n▸ worktree "${nome}"${dryRun ? ' [DRY RUN]' : ''}   base: ${base}`);
@@ -299,7 +306,9 @@ async function fechar(cfg) {
     log(`\n  worktree não existe em ${destino} — só limpando referências.`);
     run('git worktree prune');
     if (cfg.posFechar && !dryRun) { log('\n  posFechar (config do projeto):'); await cfg.posFechar({ raiz, worktree: destino, nome, branch, run, log, dryRun }); }
-    ok(`worktree "${nome}" não existia — referências limpas`);
+    const ramo = `${cfg.branchPrefix ?? 'feature/'}${nome}`;
+    const ramoExiste = !!capture(`git rev-parse --verify --quiet ${ramo}`, raiz);
+    ok(`worktree "${nome}" não existia — referências limpas${ramoExiste ? `; branch ${ramo} não foi tocada` : ''}`);
   }
 
   log(`\n▸ fechando worktree "${nome}"${dryRun ? ' [DRY RUN]' : ''}\n`);
@@ -400,12 +409,14 @@ function achaLinks(dir, out = []) {
 
 function listar() {
   log('');
-  log(capture('git worktree list') || '(nenhuma)');
-  log('');
+  const lista = capture('git worktree list');
+  log(lista || '(nenhuma)');
+  ok(`${lista ? lista.split('\n').length : 0} worktrees`);
 }
 
 // ── dispatch ─────────────────────────────────────────────────────────────────
 
+try {
 const cfg = await carregaConfig();
 if (comando === 'new') await novo(cfg);
 else if (comando === 'close') await fechar(cfg);
@@ -422,5 +433,8 @@ Sinais (última linha): OK <path> (0) | SUJO: … (2) | FALTA: … (1)
 
 Extensão por projeto: worktree.config.mjs no root, opcional (ver cabeçalho do script).
 `);
-  process.exit(comando ? 1 : 0);
+  falta('comando — use new|close|list');
+}
+} catch (e) {
+  falta(String(e && e.message ? e.message : e).split('\n')[0]);
 }

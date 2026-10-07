@@ -157,7 +157,7 @@ metade — medido em cinco casos onde a regra violada estava *lida*):
   corrigiu (outro sintoma, mesma fonte), remendar de novo não converge. Parar de
   corrigir sintoma: nomear a fonte comum e decidir a correção estrutural (fonte
   única, contrato, desenho). Se ela exige mudar plano ou spec, é parada legítima.
-  Medido: 8 rodadas num mesmo plano, cada uma achando um irmão do achado anterior.
+  Sinal típico: várias rodadas seguidas, cada uma achando um irmão do achado anterior.
 - **Falha sem relação com o diff:** registrar 1 linha, dizer que não é sua, o
   usuário decide. Nunca investigar por conta (a atribuição é fato via baseline,
   §7 — não julgamento).
@@ -361,6 +361,7 @@ mais que "Nada pendente" conservador.
 - [ ] Plano com decisão herdada: seção "Decisões pendentes", marcas `⟂`,
       checklist de fechamento (MUST quando houver)
 - [ ] Banco de teste: nenhum banco criado sem "sim" a pergunta isolada (MUST)
+- [ ] Revisor de spec recebeu o arquivo da spec, não só o recorte da task (SHOULD)
 - [ ] Sinal de atenção **só** nas respostas que devolvem o controle; ⏳ com
       trabalho em curso comprovado no turno (MUST)
 
