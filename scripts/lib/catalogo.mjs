@@ -42,7 +42,8 @@ export function catalogo(raizSkill, paths, projetoAbs) {
   for (const origem of listar(raizSkill, 'assets/templates'))
     add(`template:${origem.split('/').pop()}`, 'arquivo', `${paths.docs}ok-playbook/templates/${origem.slice('assets/templates/'.length)}`, origem, resolverPlaceholders(ler(origem), paths));
 
-  const raizProjeto = projetoAbs.replace(/\\/g, '/');
+  // areas.mjs compara paths em minúsculas (canon()) — a raiz entra assim
+  const raizProjeto = projetoAbs.replace(/\\/g, '/').toLowerCase();
   for (const origem of listar(raizSkill, 'assets/hooks')) {
     const rel = origem.slice('assets/hooks/'.length);
     add(`hook:${rel}`, 'arquivo', `.claude/hooks/${rel}`, origem, ler(origem).replace(/<PROJECT_ROOT>/g, raizProjeto));

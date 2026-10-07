@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { catalogo } from './lib/catalogo.mjs';
 import { gravarManifesto, lerManifesto, ARQUIVO } from './lib/manifesto.mjs';
 import { PEDEM_DECISAO, planejar } from './lib/plano.mjs';
-import { hash, inserirBloco } from './lib/render.mjs';
+import { adaptar, hash, inserirBloco } from './lib/render.mjs';
+import { lerSettings, mesclarSettings } from './lib/settings.mjs';
 
 const RAIZ_SKILL = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FLAGS = new Set(['--projeto', '--so', '--manter', '--do-projeto', '--sem']);
@@ -35,32 +36,7 @@ function origem() {
   catch { return 'desconhecida'; }
 }
 
-function mesclarSettings(projeto) {
-  const snippet = join(RAIZ_SKILL, 'assets/settings-snippet.json');
-  if (!existsSync(snippet)) return;
-  const alvo = join(projeto, '.claude/settings.json');
-  const atual = existsSync(alvo) ? JSON.parse(readFileSync(alvo, 'utf8')) : {};
-  const doSnippet = JSON.parse(readFileSync(snippet, 'utf8'));
-  const novo = doSnippet.permissions ?? {};
-  atual.permissions ??= {};
-  for (const k of ['allow', 'deny']) {
-    const lista = atual.permissions[k] ?? [];
-    for (const r of novo[k] ?? []) if (!lista.includes(r)) lista.push(r);
-    if (lista.length) atual.permissions[k] = lista;
-  }
-  for (const [evento, entradas] of Object.entries(doSnippet.hooks ?? {})) {
-    if (evento.startsWith('_comment') || !Array.isArray(entradas)) continue;
-    atual.hooks ??= {};
-    const lista = atual.hooks[evento] ?? [];
-    for (const e of entradas)
-      if (!lista.some((x) => x.matcher === e.matcher)) lista.push(e);
-    atual.hooks[evento] = lista;
-  }
-  mkdirSync(dirname(alvo), { recursive: true });
-  writeFileSync(alvo, `${JSON.stringify(atual, null, 2)}\n`);
-}
-
-function aplicar(o, m, itens) {
+function aplicar(o, m, itens, settings) {
   const v = versao();
   let escritos = 0;
   for (const { item, classe } of planejar(itens, m, o.projeto)) {
@@ -68,12 +44,12 @@ function aplicar(o, m, itens) {
     const { id } = item;
     if (o.sem.includes(id)) { m.itens[id] = { destino: item.destino, estado: 'excluido' }; continue; }
     if (o.manter.includes(id)) { m.itens[id] = { destino: item.destino, origem: item.origem, estado: 'customizado', hashOrigem: hash(item.fonte) }; continue; }
-    const escrever = classe === 'novo' || classe === 'atualizavel' || o.so.includes(id);
+    const escrever = classe !== 'marcador-quebrado' && (classe === 'novo' || classe === 'atualizavel' || o.so.includes(id));
     if (escrever) {
       const caminho = join(o.projeto, item.destino);
       mkdirSync(dirname(caminho), { recursive: true });
       const atual = existsSync(caminho) ? readFileSync(caminho, 'utf8') : null;
-      writeFileSync(caminho, item.tipo === 'bloco' ? inserirBloco(atual, item.conteudo, v) : item.conteudo);
+      writeFileSync(caminho, item.tipo === 'bloco' ? inserirBloco(atual, item.conteudo, v) : adaptar(item.conteudo, atual));
       escritos++;
     }
     if (item.tipo !== 'semente' && (escrever || classe === 'igual'))
@@ -81,7 +57,10 @@ function aplicar(o, m, itens) {
   }
   for (const p of o.doProjeto) m.itens[`projeto:${p}`] = { destino: p, estado: 'do-projeto' };
   m.playbook = { versao: v, origem: origem() };
-  mesclarSettings(o.projeto);
+  if (settings) {
+    const snippet = join(RAIZ_SKILL, 'assets/settings-snippet.json');
+    if (existsSync(snippet)) mesclarSettings(settings, JSON.parse(readFileSync(snippet, 'utf8')), m);
+  } else if (o.sem.includes('settings')) m.itens.settings = { estado: 'excluido' };
   gravarManifesto(o.projeto, m);
   return escritos;
 }
@@ -92,7 +71,16 @@ if (!m) sair(`FALTA: ${ARQUIVO} ausente em ${o.projeto} — crie com { "paths": 
 const itens = catalogo(RAIZ_SKILL, m.paths, o.projeto);
 
 if (o.cmd === 'apply') {
-  const n = aplicar(o, m, itens);
+  // tudo que pode falhar acontece antes da primeira escrita
+  const conhecidos = new Set([...itens.map((i) => i.id), ...Object.keys(m.itens)]);
+  for (const id of [...o.so, ...o.manter, ...o.sem])
+    if (!conhecidos.has(id) && !(id === 'settings' && o.sem.includes(id))) sair(`FALTA: id desconhecido: ${id}`, 1);
+  let settings = null;
+  if (!o.sem.includes('settings') && m.itens.settings?.estado !== 'excluido') {
+    try { settings = lerSettings(o.projeto); }
+    catch (e) { sair(`FALTA: .claude/settings.json não é JSON válido (${e.message}) — corrija ou use --sem settings`, 1); }
+  }
+  const n = aplicar(o, m, itens, settings);
   const pend = planejar(itens, m, o.projeto).filter((l) => PEDEM_DECISAO.includes(l.classe));
   for (const l of pend) console.log(`${l.classe}\t${l.item.id}\t${l.item.destino}`);
   sair(pend.length ? `FALTA: ${pend.length} itens pedem decisão (use --so / --manter / --sem / --do-projeto)` : `OK aplicado: ${n} escritos`, pend.length ? 1 : 0);

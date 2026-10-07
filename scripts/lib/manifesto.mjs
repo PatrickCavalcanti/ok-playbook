@@ -16,7 +16,7 @@ export function lerManifesto(projeto) {
   const caminho = join(projeto, ARQUIVO);
   if (!existsSync(caminho)) return null;
   const m = JSON.parse(readFileSync(caminho, 'utf8'));
-  m.paths = Object.fromEntries(CHAVES.map((k) => [k, barra(m.paths?.[k] ?? PADRAO[k])]));
+  m.paths = Object.fromEntries(CHAVES.map((k) => [k, barra((m.paths?.[k] ?? PADRAO[k]).replace(/\\/g, '/'))]));
   m.itens ??= {};
   m.contribuicao ??= 'direct';
   return m;

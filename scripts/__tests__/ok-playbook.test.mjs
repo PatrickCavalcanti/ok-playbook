@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -154,4 +154,161 @@ test('apply duas vezes é idempotente nos settings', () => {
   const um = ler(p, '.claude/settings.json');
   rodar(s, 'apply', '--projeto', p);
   assert.equal(ler(p, '.claude/settings.json'), um);
+});
+
+// ---- correções de review (I1, I3, I4, M6) ----
+test('I1: raiz do projeto entra em minúsculas nos hooks', () => {
+  const s = skillSintetica();
+  mkdirSync(join(s, 'assets/hooks/lib'), { recursive: true });
+  writeFileSync(join(s, 'assets/hooks/lib/areas.mjs'), "const P = '<PROJECT_ROOT>';\n");
+  const base = mkdtempSync(join(tmpdir(), 'okpb-'));
+  const p = join(base, 'MeuProjeto');
+  mkdirSync(p);
+  writeFileSync(join(p, 'ok-playbook.json'), '{"paths":{}}');
+  assert.equal(rodar(s, 'apply', '--projeto', p).code, 0);
+  const t = ler(p, '.claude/hooks/lib/areas.mjs');
+  assert.match(t, /meuprojeto'/);
+  assert.equal(/[A-Z]/.test(t.replace('const P', '')), false);
+});
+
+test('I3: CLAUDE.md CRLF → só o bloco é inserido, resto byte a byte', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  const orig = '# Meu\r\n\r\nregra\r\nlocal\r\n';
+  writeFileSync(join(p, 'CLAUDE.md'), orig);
+  assert.equal(rodar(s, 'apply', '--projeto', p).code, 0);
+  const novo = ler(p, 'CLAUDE.md');
+  assert.equal(novo.replace(/\r\n/g, '').includes('\n'), false);
+  assert.ok(novo.endsWith(orig));
+});
+
+test('I3: AGENTS.md com BOM+CRLF → BOM só no byte 0; arquivo existente mantém EOL', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  writeFileSync(join(p, 'AGENTS.md'), '\uFEFFleia\r\n');
+  assert.equal(rodar(s, 'apply', '--projeto', p).code, 0);
+  const b = readFileSync(join(p, 'AGENTS.md'));
+  assert.deepEqual([...b.subarray(0, 3)], [0xEF, 0xBB, 0xBF]);
+  assert.equal(ler(p, 'AGENTS.md').lastIndexOf('\uFEFF'), 0);
+  const alvo = join(p, 'docs/ok-playbook/patterns/dev.md');
+  writeFileSync(alvo, '# Dev\r\n');
+  writeFileSync(join(s, 'references/patterns/dev.md'), '# Dev v2\nlinha\n');
+  assert.equal(rodar(s, 'apply', '--projeto', p, '--so', 'pattern:dev.md').code, 0);
+  assert.equal(readFileSync(alvo, 'utf8'), '# Dev v2\r\nlinha\r\n');
+});
+
+test('I4a: settings inválido (comentário) → FALTA e nada escrito; --sem settings segue', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  mkdirSync(join(p, '.claude'));
+  writeFileSync(join(p, '.claude/settings.json'), '{\n // oi\n "a": 1\n}\n');
+  const r = rodar(s, 'apply', '--projeto', p);
+  assert.equal(r.code, 1);
+  assert.match(r.ultima, /^FALTA: \.claude\/settings\.json não é JSON válido \(.+\) — corrija ou use --sem settings$/);
+  assert.equal(existsSync(join(p, 'CLAUDE.md')), false);
+  assert.equal(ler(p, 'ok-playbook.json'), '{"paths":{}}');
+  assert.equal(rodar(s, 'apply', '--projeto', p, '--sem', 'settings').code, 0);
+  assert.equal(ler(p, '.claude/settings.json'), '{\n // oi\n "a": 1\n}\n');
+  assert.deepEqual(JSON.parse(ler(p, 'ok-playbook.json')).itens.settings, { estado: 'excluido' });
+});
+
+test('I4a/d: settings com BOM, CRLF e indent 4 é aceito e preservado', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  mkdirSync(join(p, '.claude'));
+  writeFileSync(join(p, '.claude/settings.json'), '\uFEFF{\r\n    "env": {\r\n        "X": "1"\r\n    }\r\n}\r\n');
+  assert.equal(rodar(s, 'apply', '--projeto', p).code, 0);
+  const t = ler(p, '.claude/settings.json');
+  assert.equal(t.indexOf('\uFEFF'), 0);
+  assert.equal(t.lastIndexOf('\uFEFF'), 0);
+  assert.equal(t.replace(/\r\n/g, '').includes('\n'), false);
+  assert.match(t, /\r\n    "env": \{/);
+  const st = JSON.parse(t.slice(1));
+  assert.equal(st.env.X, '1');
+  assert.deepEqual(st.permissions.deny, ['Bash(git push --force*)']);
+  rodar(s, 'apply', '--projeto', p);
+  assert.equal(ler(p, '.claude/settings.json'), t);
+});
+
+test('I4d: tab como indentação é preservada', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  mkdirSync(join(p, '.claude'));
+  writeFileSync(join(p, '.claude/settings.json'), '{\n\t"env": {}\n}\n');
+  rodar(s, 'apply', '--projeto', p);
+  assert.match(ler(p, '.claude/settings.json'), /\n\t"env": \{\}/);
+});
+
+test('I4b: o que o dono removeu depois não volta', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  rodar(s, 'apply', '--projeto', p);
+  const alvo = join(p, '.claude/settings.json');
+  const st = JSON.parse(readFileSync(alvo, 'utf8'));
+  st.permissions.allow = st.permissions.allow.filter((r) => r !== 'Bash(git *)');
+  delete st.hooks.PreToolUse;
+  writeFileSync(alvo, JSON.stringify(st, null, 2));
+  const m = JSON.parse(ler(p, 'ok-playbook.json'));
+  assert.deepEqual(m.settings.allow, ['Bash(git *)']);
+  assert.deepEqual(m.settings.hooks, ['PreToolUse:Bash']);
+  rodar(s, 'apply', '--projeto', p);
+  const depois = JSON.parse(readFileSync(alvo, 'utf8'));
+  assert.equal((depois.permissions.allow ?? []).includes('Bash(git *)'), false);
+  assert.equal(depois.hooks?.PreToolUse, undefined);
+  assert.deepEqual(depois.permissions.deny, ['Bash(git push --force*)']);
+});
+
+test('I4b: regra nova no snippet depois é oferecida', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  rodar(s, 'apply', '--projeto', p);
+  const snip = JSON.parse(readFileSync(join(s, 'assets/settings-snippet.json'), 'utf8'));
+  snip.permissions.allow.push('Bash(ls *)');
+  writeFileSync(join(s, 'assets/settings-snippet.json'), JSON.stringify(snip));
+  rodar(s, 'apply', '--projeto', p);
+  assert.ok(JSON.parse(ler(p, '.claude/settings.json')).permissions.allow.includes('Bash(ls *)'));
+});
+
+test('I4c: --sem settings pula o merge e registra excluido', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  assert.equal(rodar(s, 'apply', '--projeto', p, '--sem', 'settings').code, 0);
+  assert.equal(existsSync(join(p, '.claude/settings.json')), false);
+  assert.deepEqual(JSON.parse(ler(p, 'ok-playbook.json')).itens.settings, { estado: 'excluido' });
+  rodar(s, 'apply', '--projeto', p);
+  assert.equal(existsSync(join(p, '.claude/settings.json')), false);
+});
+
+test('M6a: id desconhecido → FALTA antes de escrever', () => {
+  const s = skillSintetica();
+  for (const f of ['--so', '--manter', '--sem']) {
+    const p = projeto();
+    const r = rodar(s, 'apply', '--projeto', p, f, 'regras:CLAUDE.mdd');
+    assert.equal(r.code, 1);
+    assert.equal(r.ultima, 'FALTA: id desconhecido: regras:CLAUDE.mdd');
+    assert.equal(existsSync(join(p, 'CLAUDE.md')), false);
+  }
+});
+
+test('M6b: start sem end → marcador-quebrado, não escreve aquele item', () => {
+  const s = skillSintetica();
+  const p = projeto();
+  const quebrado = '<!-- ok-playbook:start v0.9 -->\nvelho\n\n# resto do dono\n';
+  writeFileSync(join(p, 'CLAUDE.md'), quebrado);
+  const r = rodar(s, 'apply', '--projeto', p);
+  assert.equal(r.code, 1);
+  assert.match(r.out, /marcador-quebrado\tregras:CLAUDE\.md\tCLAUDE\.md/);
+  assert.equal(ler(p, 'CLAUDE.md'), quebrado);
+  assert.equal(rodar(s, 'apply', '--projeto', p, '--so', 'regras:CLAUDE.md').code, 1);
+  assert.equal(ler(p, 'CLAUDE.md'), quebrado);
+  assert.match(ler(p, 'AGENTS.md'), /ok-playbook:end/);
+  writeFileSync(join(p, 'CLAUDE.md'), 'solto\n<!-- ok-playbook:end -->\n');
+  assert.match(rodar(s, 'plan', '--projeto', p).out, /marcador-quebrado\tregras:CLAUDE\.md/);
+});
+
+test('M6c: paths com \\ viram /', () => {
+  const s = skillSintetica();
+  const p = projeto({ paths: { backlog: 'docs\\fb' } });
+  assert.equal(rodar(s, 'apply', '--projeto', p).code, 0);
+  assert.equal(ler(p, 'docs/fb/_template.md'), '# Feedback\n');
 });
