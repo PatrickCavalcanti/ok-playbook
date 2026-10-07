@@ -36,7 +36,7 @@ quebrado" — e a sessão gasta o tempo do dono investigando o que não é dela.
 |---|---|---|
 | **Ajuste pontual** | usuário está usando e quer mudar algo | sem plano, direto, onde ele está testando (main ou worktree do momento) |
 | **Funcionalidade** | trabalho novo, várias frentes | plano com fases, até a entrega |
-| **Processo** | criar ou consertar script | sempre em sessão separada — entregar o prompt, não consertar inline |
+| **Processo** | criar ou consertar script | script que **surge no meio de outro trabalho**: sessão separada — entregar o prompt, não consertar inline. Sessão **aberta para isso** (spec + plano do script): ela mesma executa (ver "Quem planejou executa", §4) |
 | **Correção de bug** | comportamento errado medível antes/depois | reproduz → corrige → teste de regressão **antes** da entrega (único fluxo com teste antes da entrega) |
 
 **Gatilho de risco** — escala trabalho pequeno para o fluxo completo se qualquer
@@ -119,6 +119,7 @@ metade — medido em cinco casos onde a regra violada estava *lida*):
   suíte global, regressão, banco, endurecimento ... quando o usuário pedir
 ```
 
+- **Quem planejou executa.** A sessão que fez a spec e o plano executa o plano ela mesma, como orquestradora — quem implementa são os subagentes. Por quê: o contexto acumulado no planejamento (decisões tomadas, fatos levantados, o porquê de cada corte) vale mais do que uma janela limpa; um executor frio refaz perguntas já respondidas ou desfaz cortes deliberados. Sessão separada para executar só quando o usuário pedir (ex.: a sessão de planejamento ficou longa demais). Vale também para plano de script de processo.
 - **Entrega é no fim do plano.** Parada intermediária só se acordada no gate,
   antes do primeiro dispatch. Nunca perguntar "quer testar?" entre fases — nem
   na forma disfarçada ("a menos que você queira olhar antes").
@@ -241,7 +242,7 @@ dele, e ele cai com a sessão dona — várias sessões de teste ao mesmo tempo 
 um servidor avulso, sem dono. Por quê: banco criado em silêncio é como o teste
 termina rodando contra a infra errada com suíte verde.
 
-**Quando falta um script** (ou devolve `FALTA:`): nunca consertar inline —
+**Quando falta um script** (ou devolve `FALTA:`) no meio de outro trabalho: nunca consertar inline —
 simples → entregar prompt para sessão separada; complexo → arquivo de requisitos
 + dois prompts; crítico → plano bloqueado; não crítico → seguir sem o step e
 reportar. **O prompt entregue vira pendência** (§9) com ponteiro — prompt só no

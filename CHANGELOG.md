@@ -13,6 +13,9 @@ e vira skill que materializa o canon no projeto.
 - `worktree.mjs` de referência com `SUJO:` e `--commit-abertura`.
 - Hooks: `settings-snippet.json` aponta para `.mjs` e registra também o hook de PowerShell.
 - Licença MIT.
+- Quem planejou executa; fluxo Processo distingue script que surge no meio de outro trabalho.
+- Hook: PROJETO em tempo de execução (CLAUDE_PROJECT_DIR), sobe da worktree para a raiz.
+- Política de modelos alinhada: revisão de fase (spec + qualidade) = Sonnet; revisão do conjunto/final = Opus.
 
 ### Migração de projetos 0.x
 Rodar a skill no modo configurar: o bloco `<!-- ok-playbook:include:start -->` é substituído pelo bloco novo; remover depois o submódulo/dependência, `ok-playbook.config.json` e `OKPLAYBOOK.md`; ponteiros antigos em `.claude/skills/` aparecem como `conflito` (escolher `--so`).

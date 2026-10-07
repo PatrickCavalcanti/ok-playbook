@@ -20,7 +20,7 @@ const SEMENTES = [
   ['_index.template.md', 'arch', '_index.md'],
 ];
 
-export function catalogo(raizSkill, paths, projetoAbs) {
+export function catalogo(raizSkill, paths) {
   const ler = (r) => readFileSync(join(raizSkill, r), 'utf8');
   const itens = [];
   const add = (id, tipo, destino, origem, conteudo) =>

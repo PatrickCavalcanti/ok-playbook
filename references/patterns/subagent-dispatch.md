@@ -60,13 +60,15 @@ Este doc serve a três usos:
 | **Scout** (varre arquivos, extrai o relevante, devolve resumo — não muda código) | menor capaz |
 | **Implementer** (executa task do plano) | menor capaz (rápido, barato) |
 | **Spec reviewer** (verifica conformidade com spec) | menor capaz |
-| **Code quality reviewer** (revisão de qualidade entre tasks) | maior capacidade |
-| **Final code reviewer** (revisão final completa antes de fechar) | maior capacidade |
+| **Revisão de fase** (qualidade, ao fim de cada fase; agentes separados) | menor capaz |
+| **Revisão do conjunto / final** (gate da entrega) | maior capacidade |
 
 Tradução prática (Anthropic em 2026-Q2):
 
-- Scout / implementer / spec reviewer → **Sonnet**.
-- Code quality reviewer / final reviewer → **Opus**.
+- Scout / implementer / spec reviewer / revisão de fase → **Sonnet**.
+- Revisão do conjunto / final → **Opus**.
+
+Alinhado a [`superpowers-workflow.md`](./superpowers-workflow.md).
 
 **Por que fixa**: avaliar caso-a-caso "esta task é complexa o bastante para Opus?" introduz variabilidade arbitrária. Implementação repetitiva no Sonnet, decisão arquitetural no Opus — separação por papel é mais robusta que por percepção de complexidade.
 
@@ -245,7 +247,7 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 |---|---|
 | Avaliar complexidade da task para escolher modelo | Variabilidade arbitrária; usa regra por papel (§4) |
 | Implementer em Opus "porque é importante" | Cara sem ganho; Sonnet implementa, Opus revisa |
-| Reviewer em Sonnet "para economizar" | Revisão é onde o modelo grande compensa; economizar ali zera o valor da revisão |
+| Revisão do conjunto / final em Sonnet "para economizar" | É o gate da entrega, onde o modelo grande compensa; economizar ali zera o valor da revisão (a revisão de fase em Sonnet é a política, §4) |
 | Levantamento amplo feito inline no Opus quando dava pra delegar a um Scout Sonnet | Queima janela e tempo do controller; Scout devolve só o resumo (§4.1) |
 | Scout despachado para ler 1 arquivo de path conhecido | Overhead de dispatch > ganho; leia inline |
 | Scout que "já implementa" o que levantou | Empurra decisão pro Sonnet; Scout devolve dados, Opus decide |
@@ -298,7 +300,7 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 ### Anti-padrões ausentes
 
 - [ ] **NÃO** existe subagente em Opus para implementação
-- [ ] **NÃO** existe subagente em Sonnet para revisão final
+- [ ] **NÃO** existe subagente em Sonnet para a revisão do conjunto / final
 - [ ] **NÃO** existe subagente instalando deps
 - [ ] **NÃO** existe subagente despachando outro subagente
 - [ ] **NÃO** existe commit feito confiando no cwd em multi-repo

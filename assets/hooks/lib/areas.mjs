@@ -32,7 +32,7 @@ export const PROJETO = canon(
   process.env.CLAUDE_PROJECT_DIR
     // fallback: .claude/hooks/lib/areas.mjs → três níveis acima = raiz do checkout
     || resolverPath(dirname(fileURLToPath(import.meta.url)), '..', '..', '..'),
-);
+).replace(/\/\.worktrees\/[^/]+$/, ''); // sessão aberta numa worktree: sobe para a raiz (o ramo `worktree` trata a worktree)
 
 /** Cache de plugins do Claude Code — scripts de skill executam a partir daqui. */
 export const PLUGINS = `${(process.env.USERPROFILE || process.env.HOME || '').replace(/\\/g, '/').toLowerCase()}/.claude/plugins`;

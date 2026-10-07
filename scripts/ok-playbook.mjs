@@ -75,7 +75,7 @@ function aplicar(o, m, itens, settings) {
 const o = args(process.argv.slice(2));
 const m = lerManifesto(o.projeto);
 if (!m) sair(`FALTA: ${ARQUIVO} ausente em ${o.projeto} — crie com { "paths": { … } } (modo configurar da skill)`, 1);
-const itens = catalogo(RAIZ_SKILL, m.paths, o.projeto);
+const itens = catalogo(RAIZ_SKILL, m.paths);
 
 if (o.cmd === 'apply') {
   // tudo que pode falhar acontece antes da primeira escrita

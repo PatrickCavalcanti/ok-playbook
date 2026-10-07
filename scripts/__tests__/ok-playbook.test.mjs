@@ -202,6 +202,8 @@ test('I1: areas.mjs materializado calcula PROJETO em tempo de execução', () =>
   const semEnv = { ...process.env };
   delete semEnv.CLAUDE_PROJECT_DIR;
   assert.equal(rodaCom(semEnv), p.replace(/\\/g, '/').toLowerCase());
+  // sessão aberta numa worktree: PROJETO sobe para a raiz
+  assert.equal(rodaCom({ ...process.env, CLAUDE_PROJECT_DIR: 'E:\\Algum\\Lugar\\.worktrees\\w1' }), 'e:/algum/lugar');
 });
 
 test('M1: customizado cujo arquivo sumiu → customizado-ausente; --so restaura', () => {

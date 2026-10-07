@@ -17,7 +17,7 @@ Plugin `superpowers-marketplace` instalado via `claude /plugin install`.
 - `brainstorming` — antes de qualquer trabalho criativo (criar feature, modificar comportamento, design). Sessão atual.
 - `writing-plans` — depois de spec aprovada, antes de implementação. Sessão atual.
 - `subagent-driven-development` — execução do plano em subagentes paralelos/sequenciais. Sessão atual orquestra.
-- `executing-plans` — alternativa: executar o plano em sessão separada com review checkpoints (quando a implementação é longa demais pra caber numa sessão).
+- `executing-plans` — alternativa: executar o plano em sessão separada com review checkpoints (só a pedido do usuário, ex.: quando a sessão de planejamento ficou longa demais — por padrão, quem planejou executa, ver `dev-process.md` §4).
 
 ---
 

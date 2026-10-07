@@ -56,7 +56,7 @@ Anti-pattern: "salva esta lista de PRs". Resposta correta: perguntar o que foi *
 
 ### Workflow superpowers — roteamento de modelos
 
-Fluxo: `brainstorming` → `writing-plans` → `subagent-driven-development` (ou `executing-plans` em sessão separada). Detalhes em `<playbook-root>patterns/superpowers-workflow.md`.
+Fluxo: `brainstorming` → `writing-plans` → `subagent-driven-development` (ou `executing-plans` em sessão separada, só a pedido do usuário). Detalhes em `<playbook-root>patterns/superpowers-workflow.md`.
 
 Roteamento fixo de modelos (não avaliar complexidade da task):
 
@@ -86,11 +86,12 @@ Precedência: instrução direta do usuário > este bloco > instruções globais
 |---|---|---|
 | **Ajuste pontual** | usuário está usando e quer mudar algo | sem plano, direto, onde ele testa |
 | **Funcionalidade** | trabalho novo, várias frentes | plano com fases, até a entrega |
-| **Processo** | criar/consertar script | sessão separada — entregar o prompt, que **vira pendência** |
+| **Processo** | criar/consertar script | script que **surge no meio de outro trabalho**: sessão separada — entregar o prompt, que **vira pendência**. Sessão **aberta para isso** (spec + plano do script): ela mesma executa (ver "Quem planejou executa") |
 | **Correção de bug** | comportamento medível antes/depois | reproduz → corrige → regressão **antes** da entrega |
 
 - **Gatilho de risco** (escala trabalho pequeno para o fluxo completo): (1) *se
   eu errar, desfaz sozinho?* (2) *o efeito aparece fora do que estou mudando?*
+- **Quem planejou executa.** A sessão que fez a spec e o plano executa o plano ela mesma, como orquestradora — quem implementa são os subagentes; o contexto do planejamento vale mais que uma janela limpa. Sessão separada para executar só quando o usuário pedir. Vale também para plano de script de processo.
 - **Entrega é no fim do plano**; parada intermediária só se acordada no gate.
   Oferta de pausa em texto livre ("a menos que você queira olhar antes") é
   parada entre fases disfarçada — não fazer.
