@@ -110,6 +110,20 @@ vale em toda sessão:
   turno) · **▶ Pode testar** (só com passos acima) · **❓ Decisão:
   `<pergunta>`** (dizer se parei ou se há agente rodando) · **📖 Leia antes —
   `<porquê>`**. Na dúvida, o de menor atenção que seja verdadeiro.
+- **Bug visto durante o uso:** vira pendência, não plano na hora. **Ferramenta
+  externa de CLI se prova executando** (comando + efeito observado), nunca lendo.
+  **"Continua" após limite de sessão não responde pergunta pendente** — retoma até
+  a pergunta e a re-apresenta; limite no meio de dispatch: redespachar do zero.
+
+**Prompt de dispatch (todo subagente)** — detalhe em `<playbook-root>patterns/dev-process.md §5`:
+
+- Passo zero de premissas: se o código divergir do plano, devolver BLOCKED.
+- Pergunta de julgamento no fim do prompt (obrigatória).
+- Exceção autorizada de escopo fechado, quando houver, vai explícita no prompt.
+- Terceiro caminho: texto do plano contradiz o critério de verificação do próprio plano → seguir o critério e relatar (BLOCKED é para ambiguidade).
+- **Proibido git destrutivo** (`checkout -- .`, `checkout <sha> -- <path>`, `stash`, `reset`, `restore`, `clean`, `worktree remove`): o repositório é compartilhado entre sessões.
+- Não esperar teste em background: rodar em foreground com timeout ou reportar que não rodou.
+- Script de prova, harness, stub ou versão antiga de arquivo (`git show <sha>:<path> >`) vai para o scratchpad, nunca para dentro do tree do repo/worktree.
 
 ### Registro de feedback de sessão
 
