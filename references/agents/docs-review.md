@@ -109,7 +109,7 @@ Após criar (ou atualizar) insights em §6, verificar se algum tem sinal de "iss
 
 Sinais que justificam a oferta:
 
-- Insight descreve regra/pattern que **não é Igris-específico** nem do domínio do projeto (ex: "agente X deveria fazer Y" onde X é um agente genérico definido no playbook).
+- Insight descreve regra/pattern que **não é específico de um projeto** nem do domínio do projeto (ex: "agente X deveria fazer Y" onde X é um agente genérico definido no playbook).
 - Feedback corrigiu protocolo de **agente que veio do playbook** (`docs-review`, `new-agent`, `permissions-review`) — quase certo que sobe.
 - Permissões repetidamente faltando que já existem como pattern genérico no [`<playbook-root>patterns/permissions.md`](<playbook-root>patterns/permissions.md) (caso comum).
 

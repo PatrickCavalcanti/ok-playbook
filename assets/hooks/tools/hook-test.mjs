@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
-const HOOK = path.join(aqui, '..', 'auto-approve-project-bash.js');
+const HOOK = path.join(aqui, '..', 'auto-approve-project-bash.mjs');
 
 // AJUSTE NA INSTALAÇÃO: IRMAO/SCRATCH/HOME precisam bater com as áreas
 // declaradas no hook. Os casos que os usam são os que provam a política de

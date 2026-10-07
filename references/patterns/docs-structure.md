@@ -248,7 +248,7 @@ Custos:
 
 ## 11. Inspirações e evolução
 
-Padrão extraído da prática do projeto Igris, primeiro consumidor formal do `ok-playbook`. Para evoluir:
+Padrão extraído da prática. Para evoluir:
 
 - Nova seção obrigatória do `_index.md` validada em 2+ projetos → §5.1.
 - Novo placeholder canônico (além dos 7 em §4) → §4.

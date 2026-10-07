@@ -168,7 +168,7 @@ Rules em `permissions.allow` cobrem a maioria dos casos **quando o comando é si
 
 1. **Comandos compostos com `cd <path> && <cmd>`** — o matcher trata `cd` como context-changing (igual `devbox run`), exigindo regra combinada explícita. Patterns como `Bash(cd <path> && *)` com wildcard inner **não casam**. Patterns `Bash(cd <path> && <cmd> *)` com literal inner funcionam mas explodem pra N variantes de path × M comandos = 100+ rules.
 
-   **Este é o caso dominante, e não é sobre worktree.** Medido em dois projetos independentes: Ariadne 846/1186 (71%) e Igris 1173/1694 (69%) das chamadas Bash começam com `cd` — e a maioria aponta pro **root do projeto** (Igris: 648 root × 214 worktree). Um hook que só cobre `.worktrees/` deixa descoberta a maior parte das sessões: a cobertura medida dessa versão foi de **8,7%** (Igris) a **17,3%** (Ariadne), com o prompt continuando a aparecer o tempo todo.
+   **Este é o caso dominante, e não é sobre worktree.** Medido em dois projetos independentes: 846/1186 (71%) e 1173/1694 (69%) das chamadas Bash começam com `cd` — e a maioria aponta pro **root do projeto** (648 root × 214 worktree num deles). Um hook que só cobre `.worktrees/` deixa descoberta a maior parte das sessões: a cobertura medida dessa versão foi de **8,7%** a **17,3%** (um número por projeto), com o prompt continuando a aparecer o tempo todo.
 
 2. **Edições em `.claude/settings.json` não recarregam mid-sessão.** Apenas o diálogo "Yes don't ask again" atualiza memória + disco simultaneamente. Toda mudança em rules exige reload window. **Hooks recarregam ao vivo.** Essa assimetria é o que faz um conserto correto parecer que não funcionou — e leva a empilhar mais regras que também não casam. Por isso o conserto mora no hook.
 
@@ -237,7 +237,7 @@ node .claude/hooks/tools/hook-test.mjs
 node .claude/hooks/tools/hook-replay.mjs --porques
 ```
 
-No passo 5, separe **recusa legítima** (comando fora das áreas, destrutivo no root, escrita em projeto irmão, `cd "$VAR"` cujo destino não dá pra provar) de **falso negativo do parser** (formato que o hook não entendeu). Só o segundo grupo justifica mexer no código. Referência de cobertura alcançada: **95%** no Igris, **87%** no Ariadne — o resto era recusa legítima.
+No passo 5, separe **recusa legítima** (comando fora das áreas, destrutivo no root, escrita em projeto irmão, `cd "$VAR"` cujo destino não dá pra provar) de **falso negativo do parser** (formato que o hook não entendeu). Só o segundo grupo justifica mexer no código. Referência de cobertura alcançada: **95%** e **87%** nos dois projetos medidos — o resto era recusa legítima.
 
 Pra esses casos, a saída canônica é **PreToolUse hook**: um script que intercepta toda call do tool especificado, executa lógica programática (regex, whitelist, validação) e retorna decisão `allow` / `deny` / `defer` (cai no permission system normal).
 
@@ -277,7 +277,7 @@ Hook recebe o evento via **stdin como JSON** (campos: `tool_name`, `tool_input.c
 
 ### PowerShell tem a mesma doença — e precisa do mesmo hook
 
-Em máquina Windows a tool PowerShell não é detalhe: medido no Igris, **376 chamadas = 17,1% de todo o shell**, e **56% começam com `Set-Location`/`cd`**. Pior, 39 começam com atribuição (`$x = (Select-String …)`), que esconde o cmdlet do matcher — `PowerShell(Select-String *)` nunca casa. Sem hook, praticamente toda chamada PowerShell pede permissão.
+Em máquina Windows a tool PowerShell não é detalhe: medido num projeto, **376 chamadas = 17,1% de todo o shell**, e **56% começam com `Set-Location`/`cd`**. Pior, 39 começam com atribuição (`$x = (Select-String …)`), que esconde o cmdlet do matcher — `PowerShell(Select-String *)` nunca casa. Sem hook, praticamente toda chamada PowerShell pede permissão.
 
 O template traz **dois hooks** (`auto-approve-project-bash.mjs` e `auto-approve-project-powershell.mjs`) sobre **uma política única** em `.claude/hooks/lib/areas.mjs`. Política compartilhada, parser por shell — se a política morasse duplicada, divergiria.
 

@@ -9,7 +9,7 @@
  * ────────────────────────────────────────────────────────────────────────────
  * POR QUE EXISTE
  *
- *   Medido nos transcripts do Igris: **376 chamadas PowerShell = 17,1% de todo
+ *   Medido nos transcripts de um projeto: **376 chamadas PowerShell = 17,1% de todo
  *   o shell da sessão-projeto**, e **56% delas começam com `Set-Location`/`cd`**
  *   — exatamente a mesma doença do Bash (o matcher não casa regra quando o
  *   comando começa com mudança de diretório). Somado a isso, 39 começam com
@@ -27,7 +27,7 @@
  *     listas explícitas, porque a heurística de verbo erraria (`New-Object` é
  *     inerte, `New-Item` escreve).
  *   - **Variáveis literais são resolvidas.** O idioma dominante aqui é
- *     `$root = "E:\Projetos\Igris"; … "$root\packages"`. Sem expandir isso,
+ *     `$root = "C:\dev\meu-projeto"; … "$root\packages"`. Sem expandir isso,
  *     todo destino viraria "indeterminado" e o hook recusaria quase tudo.
  *     Só literais são expandidos — o que vem de comando continua indeterminado.
  *   - **Parâmetros nomeados.** O destino de `New-Item -Path X -Force` é o valor

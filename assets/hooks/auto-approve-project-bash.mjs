@@ -16,9 +16,9 @@
  * POR QUE O HOOK, E NÃO RULES (medido, não suposto)
  *
  *   `Bash(npm *)` NÃO cobre `cd "<projeto>" && npm test` — o matcher trata `cd`
- *   como context-changing. Medido em dois projetos: Ariadne 846/1186 (71%) e
- *   Igris 1173/1694 (69%) das chamadas Bash começam com `cd`, e a MAIORIA
- *   aponta pro root, não pra worktree (Igris: 648 × 214). Versões anteriores
+ *   como context-changing. Medido em dois projetos: 846/1186 (71%) e
+ *   1173/1694 (69%) das chamadas Bash começam com `cd`, e a MAIORIA
+ *   aponta pro root, não pra worktree (648 × 214 num deles). Versões anteriores
  *   deste hook só cobriam `.worktrees/` → 8,7% de cobertura.
  *
  *   Rules NÃO recarregam mid-sessão; hooks recarregam ao vivo.

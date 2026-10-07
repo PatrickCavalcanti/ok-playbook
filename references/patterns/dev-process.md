@@ -12,7 +12,7 @@
 >
 > **Origem:** destilado de um dossiê de 7 execuções reais (≈134 erros de plano
 > catalogados) mais uma rodada de 4 sessões operando o processo — cada regra
-> carrega o caso que a paga. Primeira instalação: projeto Igris, 2026-08.
+> carrega o caso que a paga. Origem: prática de 2026-08.
 
 ---
 

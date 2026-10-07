@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.0 — 2026-10-06
+
+**Quebra de formato:** o playbook deixa de ser pacote instalado (npm/submódulo)
+e vira skill que materializa o canon no projeto.
+
+- Layout: `references/patterns`, `references/agents`, `assets/{rules.md,templates,hooks,scripts,settings-snippet.json}`, `VERSION`, `SKILL.md`.
+- `scripts/ok-playbook.mjs` (plan/apply/status) + manifesto `ok-playbook.json` no projeto; substitui `ok-playbook init`, `ok-playbook.config.json` e `OKPLAYBOOK.md`.
+- `playbook-audit` vira o modo atualizar/auditar da skill.
+- Removidos: CLI (`bin/`, `cli/`), `INSTALL.md`, `install/claude-md-snippet.md`, schema do config.
+- Processo: receita de commit paralelo com `git add` (cobre arquivo novo); contrato do banco de teste (nunca cria, um por checkout, criação só com sim isolado); troca de estratégia em review em loop; decisões pendentes `⟂` no plano; revisor de spec recebe a spec; teste por resultado, não contagem. `worktree.mjs`: commit de abertura com `.worktrees/` ignorado, linha-sinal em todo caminho.
+- `worktree.mjs` de referência com `SUJO:` e `--commit-abertura`.
+- Hooks: `settings-snippet.json` aponta para `.mjs` e registra também o hook de PowerShell.
+- Licença MIT.
+
+### Migração de projetos 0.x
+Rodar a skill no modo configurar: o bloco `<!-- ok-playbook:include:start -->` é substituído pelo bloco novo; remover depois o submódulo/dependência, `ok-playbook.config.json` e `OKPLAYBOOK.md`; ponteiros antigos em `.claude/skills/` aparecem como `conflito` (escolher `--so`).
+
 ## 0.5.0 (2026-09-04)
 
 **O sinal de atenção passa a marcar a devolução do controle, não o fim da
