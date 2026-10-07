@@ -105,9 +105,10 @@ Subagentes paralelos na mesma worktree **compartilham o índice do `.git`**: `gi
 - O implementer **não commita**. Entrega working tree + report contendo **os paths que tocou** e **a mensagem de commit proposta** (Conventional Commits, como escreveria se commitasse).
 - O controller commita task a task, com pathspec explícito:
   ```bash
-  git commit -q -m "feat(x): ..." --only -- packages/a/src/x.js packages/a/test/x.test.js
+  git add -- packages/a/src/x.js packages/a/test/x.test.js && git commit -q -m "feat(x): ..." -- packages/a/src/x.js packages/a/test/x.test.js
   ```
-  `--only` commita **apenas** o pathspec, ignorando o resto do índice — imune ao que outro processo tenha staged. ⚠️ `-m` vem **antes** do `--`; depois, a mensagem vira pathspec e o commit falha.
+  O `git add` dos paths cobre **arquivo novo** — `git commit --only -- <path>` falha com `pathspec did not match` em arquivo que o índice ainda não conhece. O commit com pathspec leva **só** aqueles paths, mesmo que outro processo tenha staged outra coisa. Na mesma chamada (`&&`) para encolher a janela entre add e commit. ⚠️ `-m` vem **antes** do `--`; depois, a mensagem vira pathspec.
+  **Limite:** duas tasks que tocam o **mesmo arquivo** não se separam por pathspec — o commit leva os hunks das duas. Por isso mesmo arquivo = sequencial (§Riscos); se aconteceu, um commit só, com as duas mensagens no corpo.
 - Uma verificação por fase (não por task): `git status --porcelain` depois do lote, pra pegar arquivo deixado de fora por report impreciso.
 
 **O controller não lê diff pra commitar.** Não abre arquivo, não roda `git diff`, não julga a mudança — a mensagem vem pronta de quem tem o contexto. É execução mecânica, e é isso que mantém a janela do controller (modelo caro) barata: ~2 linhas a mais por report, ~1 linha de retorno por commit. Se for preciso ler o diff pra saber o que escrever, a regra foi violada — devolver o commit ao implementer.

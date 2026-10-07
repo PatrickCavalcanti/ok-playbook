@@ -82,6 +82,18 @@ metade — medido em cinco casos onde a regra violada estava *lida*):
 6. O plano chega à worktree **commitado** (untracked não atravessa; o
    implementer improvisa). Steps com código concreto; a verificação vive no
    prompt de dispatch (§5), não em anotações.
+7. **Decisão aberta herdada vira marca.** Spec com decisão pendente → o plano
+   lista uma seção "Decisões pendentes" (`D1`, `D2`…) e marca com `⟂ D<n>` cada
+   task que depende dela; implementer que chega numa task `⟂` sem a decisão
+   tomada devolve BLOCKED. O plano termina com **checklist de fechamento**: toda
+   `⟂` resolvida, spec atualizada com a decisão, pendências registradas.
+8. **Repo auxiliar se lê antes dos steps.** Plano que toca outro repositório
+   (dependência, submódulo, serviço) abre os arquivos reais de lá no momento do
+   plano — step escrito de memória contra repo alheio é a costura não lida do
+   item 1.
+9. **Teste se descreve por resultado, não por contagem.** "Sem falha nova contra
+   a baseline", nunca "os 47 testes passam" — número absoluto é lido como
+   contrato e o implementer mexe no teste para bater o número.
 
 ---
 
@@ -140,6 +152,12 @@ metade — medido em cinco casos onde a regra violada estava *lida*):
      caminho completo ("o que estes achados fazem juntos?").
 - **Correção de achado enumera os irmãos**: o review nomeia um sintoma; quem
   corrige lista tudo que deriva da mesma fonte e decide caso a caso.
+- **Mesma classe de achado em rodadas seguidas = trocar de estratégia.** Se a
+  rodada N+1 do review do conjunto devolve achado da mesma classe que a rodada N
+  corrigiu (outro sintoma, mesma fonte), remendar de novo não converge. Parar de
+  corrigir sintoma: nomear a fonte comum e decidir a correção estrutural (fonte
+  única, contrato, desenho). Se ela exige mudar plano ou spec, é parada legítima.
+  Medido: 8 rodadas num mesmo plano, cada uma achando um irmão do achado anterior.
 - **Falha sem relação com o diff:** registrar 1 linha, dizer que não é sua, o
   usuário decide. Nunca investigar por conta (a atribuição é fato via baseline,
   §7 — não julgamento).
@@ -171,6 +189,9 @@ metade — medido em cinco casos onde a regra violada estava *lida*):
 7. **Artefato de prova fora do tree**: harness, stub, versão antiga
    (`git show <sha>:<path> >`) vão para diretório temporário/scratchpad — nunca
    para dentro do repo, mesmo que "depois apaga".
+8. **Revisor de spec recebe a spec** (o arquivo), não só o texto da task copiado
+   no prompt — conferir contra o mesmo recorte que o implementer recebeu não
+   acha o que o recorte omitiu.
 
 ---
 
@@ -204,11 +225,21 @@ contrato — a LLM lê o sinal, não interpreta saída longa.
 |---|---|
 | **worktree** (abrir/fechar) | `OK <path>` — deps validadas, submódulos ok; ou `SUJO:`/`FALTA:` (§6) |
 | **suíte global** | `OK <n> verdes, <k> pré-existentes` comparando com **baseline por sha** — separa *regressão* (era verde, agora não) de *pré-existente* de *gated* (trava de infra, não é falha de ninguém). Sem baseline: "indeterminado", sem atribuição |
-| **banco de teste** | sobe infra, garante o banco de teste, **monta o schema**, injeta envs; `OK <n> tabelas` |
+| **banco de teste** | confere o banco **deste checkout** (um por checkout: raiz e cada worktree têm o seu), sobe a infra se estiver fora, **monta o schema**, injeta as envs que o teste exige; `OK <n> tabelas`. **Nunca cria banco:** banco ausente → `FALTA: <banco> não existe — crie com: <comando exato>` |
 | (outros conforme o projeto) | mesmo contrato |
 
 A **baseline** é gravada na base de destino antes da mudança e mora no checkout
 principal (worktrees a enxergam). É ela que torna a atribuição de falha **fato**.
+
+**Criar banco de teste é autorização à parte.** Só com "sim" do usuário a uma
+**pergunta isolada** ("posso criar o banco `<nome>`?") — nenhuma aprovação
+anterior (spec, plano, gate, "pode rodar os testes") autoriza, e a pergunta não
+vai embutida em outra. Com o sim, quem roda o comando que o `FALTA:` trouxe é o
+agente. Subagente que bate no `FALTA:` devolve BLOCKED; quem pergunta é o
+controller. **Servidor compartilhado:** quem sobe o servidor de banco é dono
+dele, e ele cai com a sessão dona — várias sessões de teste ao mesmo tempo pedem
+um servidor avulso, sem dono. Por quê: banco criado em silêncio é como o teste
+termina rodando contra a infra errada com suíte verde.
 
 **Quando falta um script** (ou devolve `FALTA:`): nunca consertar inline —
 simples → entregar prompt para sessão separada; complexo → arquivo de requisitos
@@ -327,6 +358,9 @@ mais que "Nada pendente" conservador.
       confirmado por escrito no report (MUST, gate da entrega)
 - [ ] Entrega perguntou merge × worktree; nenhum merge sem pedido (MUST)
 - [ ] Pendências registradas no ato; prompts de processo com pendência-ponte (SHOULD)
+- [ ] Plano com decisão herdada: seção "Decisões pendentes", marcas `⟂`,
+      checklist de fechamento (MUST quando houver)
+- [ ] Banco de teste: nenhum banco criado sem "sim" a pergunta isolada (MUST)
 - [ ] Sinal de atenção **só** nas respostas que devolvem o controle; ⏳ com
       trabalho em curso comprovado no turno (MUST)
 

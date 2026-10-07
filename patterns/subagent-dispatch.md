@@ -183,7 +183,7 @@ Para git em multi-repo, `git -C <path>` continua sendo a forma certa (§6.4) —
 
 Em **toda** task antes do `git commit`:
 
-- `git diff --cached --stat` — confirma o que vai entrar; staging pré-existente do usuário ou de outro agente pode contaminar. (Commit com `git commit --only -- <paths>` dispensa a conferência: o pathspec explícito já ignora o resto do índice.)
+- `git diff --cached --stat` — confirma o que vai entrar; staging pré-existente do usuário ou de outro agente pode contaminar. (Commit com pathspec — `git add -- <paths> && git commit -m "…" -- <paths>` — dispensa a conferência: o pathspec já ignora o resto do índice.)
 - Testes da task passaram (não só "compilei").
 - Type-check / lint passaram (quando o projeto usa).
 
@@ -203,7 +203,7 @@ Em multi-repo (projeto principal + sidecar), sempre `git -C <path>` em vez de co
 
 **Subagente é função pura**: input (prompt + workspace) → output (commit + report). Side-effects fora disso são bug.
 
-**Exceção — dispatch paralelo na mesma worktree:** subagentes paralelos compartilham o índice do `.git`, então o output vira **só report** (working tree + paths tocados + mensagem de commit proposta) e quem commita é o controller, com `git commit -q -m "msg" --only -- <paths>`. Detalhe em [`superpowers-workflow.md §Paralelismo`](./superpowers-workflow.md). Em dispatch sequencial, ou com uma worktree por agente, vale a forma normal acima.
+**Exceção — dispatch paralelo na mesma worktree:** subagentes paralelos compartilham o índice do `.git`, então o output vira **só report** (working tree + paths tocados + mensagem de commit proposta) e quem commita é o controller, com `git add -- <paths> && git commit -q -m "msg" -- <paths>`. Detalhe em [`superpowers-workflow.md §Paralelismo`](./superpowers-workflow.md). Em dispatch sequencial, ou com uma worktree por agente, vale a forma normal acima.
 
 ---
 
