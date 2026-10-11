@@ -43,14 +43,19 @@ de várias CLIs (Nidavellir). Detalhe completo em
   e **cada task do plano declara o worker que a implementa e o porquê**
   (dificuldade × capacidade do worker; cota da CLI).
 - Paraleliza o que for possível, de preferência em CLIs diferentes, para render
-  as cotas de todas; o **orquestrador gerencia os commits** (§Commit em fase
-  paralela).
+  as cotas de todas; o **orquestrador executa os commits** — com desk, worker não
+  commita nem em fase sequencial (§Commit em fase paralela, mesma receita).
 - O mapa task → worker vai no **gate único** junto com o mapa de paralelismo; o
   usuário aprova ou troca. CLI perto do limite: dizer e propor troca.
 - Revisão de fase em reviewer médio/leve, de preferência de outro fornecedor que o
-  implementador; revisão final no reviewer mais forte com cota livre.
+  implementador; revisão final no reviewer de maior capacidade entre os elegíveis
+  (CLI não esgotada, cota que aguenta a revisão) — nunca rebaixar por economia; sem
+  nenhum elegível de capacidade máxima, dizer ao usuário.
+- Capacidade não autoriza decidir: decisão aberta ou de desenho fica no
+  controller, seja qual for o worker.
 - Worker que se dá mal num tipo de trabalho, ou worker melhor possível para ele:
-  o orquestrador **sugere** a troca/ajuste no report da fase ou da entrega.
+  o orquestrador **sugere** a troca/ajuste no report da fase ou da entrega. BLOCKED
+  por ambiguidade não é desempenho — segue a lista de paradas.
 
 Nota: esta política substitui a seção "Model Selection" do skill
 `subagent-driven-development` que usa linguagem vaga ("most capable", "fast
@@ -136,7 +141,7 @@ Subagentes paralelos na mesma worktree **compartilham o índice do `.git`**: `gi
 
 Granularidade não se perde: um commit por task, então `git bisect` continua barato.
 
-Em **fase sequencial** nada muda — o implementer commita ao final da task (default do skill).
+Em **fase sequencial** nada muda — o implementer commita ao final da task (default do skill). **Exceção: com desk de workers** (Nidavellir), o controller commita toda task feita por worker, também em fase sequencial, com esta mesma receita ([`subagent-dispatch.md`](./subagent-dispatch.md) §4.3 item 4).
 
 **Escape hatch:** se o custo de contexto incomodar, a saída é **worktree por agente paralelo** (índice próprio em `.git/worktrees/<name>/index`, implementer volta a commitar), não delegar o commit a outro subagente — delegar custaria mais, porque exigiria reenviar os reports.
 

@@ -71,10 +71,10 @@ Roteamento de modelos (detalhe em `<playbook-root>patterns/subagent-dispatch.md`
 **Com desk (Nidavellir — `list_workers`/`run_worker`)** — o plano distribui:
 
 - Consultar `list_workers` e a cota das CLIs (`get_cli_usage_limits`) ao planejar; **cada task declara o worker que a implementa e o porquê** (dificuldade × capacidade do worker; cota). Worker da própria CLI → subagente nativo.
-- Paralelizar o que for possível, de preferência em CLIs diferentes, para render as cotas de todas; o **orquestrador gerencia os commits** (receita de fase paralela abaixo).
+- Paralelizar o que for possível, de preferência em CLIs diferentes, para render as cotas de todas; o **orquestrador executa os commits** — com desk, worker não commita nem em fase sequencial (receita de fase paralela abaixo).
 - O mapa task → worker (e revisores) vai no gate único, junto com o de paralelismo; o usuário aprova ou troca. CLI perto do limite: dizer qual e quanto já foi, e propor troca.
-- Revisão de fase: reviewer médio/leve, de preferência de outro fornecedor que o implementador. Revisão final: o reviewer mais forte com cota livre (CLI dele crítica → o outro forte, avisando).
-- Worker que se dá mal num tipo de trabalho, ou worker melhor disponível para ele: **sugerir** troca/ajuste ao usuário no report da fase ou da entrega (não é parada nova).
+- Revisão de fase: reviewer médio/leve, de preferência de outro fornecedor que o implementador. Revisão final: o reviewer de maior capacidade entre os elegíveis (CLI não esgotada, cota que aguenta a revisão) — nunca rebaixar por economia; sem elegível de capacidade máxima, dizer ao usuário. Capacidade não autoriza decidir: decisão de desenho fica no controller.
+- Worker que se dá mal num tipo de trabalho, ou worker melhor disponível para ele: **sugerir** troca/ajuste ao usuário no report da fase ou da entrega (não é parada nova). BLOCKED por ambiguidade não é desempenho — segue a lista de paradas.
 
 Substitui a seção "Model Selection" do skill `subagent-driven-development` que usa linguagem vaga ("most capable", "fast cheap").
 

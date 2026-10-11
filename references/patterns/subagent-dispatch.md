@@ -115,8 +115,11 @@ CLIs disponíveis rendendo** — não uma esgotada enquanto as outras ficam para
 2. **Cada task declara o implementador e o porquê**, numa linha do plano
    (`Implementer: <worker> — <dificuldade>; <cota>`). Critérios:
    - **dificuldade × capacidade** — `priority` do worker e o "use para / não use
-     para" da description; task aberta ou com decisão de desenho vai para worker
-     forte, task mecânica e bem especificada para worker leve;
+     para" da description; implementação difícil (código delicado, muitas
+     costuras, lógica sutil) vai para worker forte, task mecânica e bem
+     especificada para worker leve. **Capacidade não autoriza decidir:** decisão
+     aberta ou de desenho continua no controller (§6.3, §7), seja qual for o
+     modelo do worker — o plano a resolve antes do dispatch;
    - **cota** — espalhar a carga pelas CLIs; não dar trabalho longo a CLI em cota
      crítica ou esgotada (ela pode parar no meio);
    - **worker da própria CLI** (`mesmaCli: true`) → preferir o subagente nativo
@@ -125,11 +128,14 @@ CLIs disponíveis rendendo** — não uma esgotada enquanto as outras ficam para
    paralelo, de preferência em CLIs diferentes — cotas diferentes trabalhando ao
    mesmo tempo. As regras de colisão continuam (mesmo arquivo ou lockfile =
    sequencial; em dúvida, sequencializar).
-4. **O orquestrador gerencia os commits.** Em fase paralela o worker não commita:
-   devolve paths + mensagem, e o controller commita com pathspec
+4. **O orquestrador executa os commits.** Com desk, worker **não commita** — nem
+   em fase sequencial: devolve paths + mensagem proposta, e o controller commita
+   com pathspec, um commit por task
    ([`superpowers-workflow.md`](./superpowers-workflow.md) §Commit em fase
-   paralela). Worker de outra CLI segue a mesma regra — o índice do `.git` é o
-   mesmo. O controller não lê diff para commitar.
+   paralela — a mesma receita). Motivo: workers de CLIs diferentes seguem
+   convenções de git diferentes e compartilham o índice. O controller não lê diff
+   para commitar. Exceção: worktree por agente (índice próprio), onde o worker
+   volta a commitar.
 5. **Apresentar e sugerir no gate.** O mapa task → worker (e os revisores) entra
    no **gate único** do plano, junto com o mapa de paralelismo; o usuário aprova
    ou troca. Se o plano dá trabalho a CLI perto do limite, dizer qual é e quanto
@@ -137,17 +143,25 @@ CLIs disponíveis rendendo** — não uma esgotada enquanto as outras ficam para
 6. **Revisão de fase**: reviewer médio/leve, de preferência de fornecedor
    diferente do implementador — pega o ponto cego do modelo que escreveu.
 7. **Revisão do conjunto / final — invariante**: o reviewer de maior capacidade
-   disponível. Se a CLI dele está em cota crítica, usar o outro reviewer forte (de
-   outro fornecedor) e dizer no report que trocou. Mudança arriscada: segunda
-   opinião forte de outro fornecedor.
+   entre os **elegíveis** — elegível é o worker `reviewer` cuja CLI não está
+   esgotada e cuja cota aguenta uma revisão do tamanho da entrega (cota crítica
+   não elimina sozinha; eliminam esgotada ou folga menor que a revisão). Empate de
+   capacidade: preferir outro fornecedor que o implementador. Nunca descer para um
+   reviewer de capacidade menor por economia; se nenhum elegível de capacidade
+   máxima existe, **dizer isso ao usuário** (entrega fica aguardando o reset ou a
+   decisão dele), não rebaixar em silêncio. Mudança arriscada: segunda opinião
+   forte de outro fornecedor.
 8. **Sugerir mudança de elenco.** Se um worker se dá mal com um tipo de trabalho
-   (BLOCKED repetido, review achando defeito recorrente no que ele entregou,
-   lentidão desproporcional) ou se outro worker/modelo serviria melhor, o
-   orquestrador **sugere** ao usuário: trocar o worker no resto do plano, ajustar
-   description/`priority`, criar ou aposentar worker. A sugestão vai no report da
-   fase ou da entrega — não é parada nova; dentro do plano aprovado, trocar um
-   worker que está falhando por outro de capacidade igual ou maior é decisão do
-   controller, relatada.
+   (review achando defeito recorrente no que ele entregou, task devolvida
+   incompleta por incapacidade, lentidão desproporcional) ou se outro
+   worker/modelo serviria melhor, o orquestrador **sugere** ao usuário: trocar o
+   worker no resto do plano, ajustar description/`priority`, criar ou aposentar
+   worker. A sugestão vai no report da fase ou da entrega — não é parada nova.
+   Dentro do plano aprovado, trocar um worker que falhou **por desempenho** por
+   outro de capacidade igual ou maior é decisão do controller, relatada.
+   **BLOCKED por ambiguidade não é desempenho**: segue a lista de paradas (a
+   decisão ausente se resolve antes de qualquer novo dispatch — trocar de worker
+   não a supre).
 
 **Risco a vigiar**: escolher sempre o mais barato. Por isso cada escolha vem
 justificada no plano, e a revisão final forte não se negocia.
@@ -308,7 +322,7 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 | Sem desk: avaliar complexidade da task para escolher modelo | Variabilidade arbitrária; usa regra por papel (§4.2) |
 | Com desk: escolher worker sem justificativa no plano, ou sempre o mais barato | A escolha por task só se sustenta com o porquê escrito (§4.3) |
 | Com desk: decidir o elenco de memória, sem `list_workers`/cota | Elenco e cota mudam; CLI esgotada para no meio da task |
-| Implementer no modelo mais forte "porque é importante" | Cara sem ganho; o forte compensa na revisão final |
+| Sem desk: implementer no modelo mais forte "porque é importante" | Cara sem ganho; o forte compensa na revisão final (com desk, worker forte para task difícil é escolha legítima — com o porquê no plano, §4.3) |
 | Revisão do conjunto / final em modelo menor "para economizar" | É o gate da entrega, onde o modelo grande compensa; economizar ali zera o valor da revisão (a revisão de fase no modelo menor é a política, §4) |
 | Levantamento amplo feito inline no controller quando dava pra delegar a um Scout | Queima janela e tempo do controller; Scout devolve só o resumo (§4.1) |
 | Scout despachado para ler 1 arquivo de path conhecido | Overhead de dispatch > ganho; leia inline |
