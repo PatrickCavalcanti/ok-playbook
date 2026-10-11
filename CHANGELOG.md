@@ -7,7 +7,7 @@
 - Invariante único: a revisão do conjunto / final roda no modelo mais forte disponível. Quem planeja e orquestra é a sessão aberta — o playbook não fixa o modelo dela.
 - **Sem desk** (só subagentes da própria CLI): divisão por papel como antes — Scout/implementer/revisão de fase no modelo econômico (Sonnet), revisão final no mais forte (Opus).
 - **Com desk (Nidavellir)**: o plano consulta `list_workers` e a cota das CLIs e cada task declara o worker que a implementa e o porquê (dificuldade × capacidade; cota); paraleliza em CLIs diferentes para render todas as cotas; o orquestrador gerencia os commits; o mapa task → worker vai no gate único; o orquestrador sugere troca de worker que se dá mal num tipo de trabalho.
-- Com desk, o controller executa todos os commits (também em fase sequencial); capacidade do worker não autoriza decidir desenho; revisor final = maior capacidade entre os elegíveis, sem rebaixar por economia; troca de worker por desempenho não cobre BLOCKED por ambiguidade.
+- Tabela "Quem commita" (`superpowers-workflow.md`): com desk ou em fase paralela na mesma worktree, o controller commita (também em fase sequencial com desk); worktree própria → worker; capacidade do worker não autoriza decidir desenho; revisor final = maior capacidade entre os elegíveis, sem rebaixar por economia; troca de worker por desempenho não cobre BLOCKED por ambiguidade.
 - Arquivos: `subagent-dispatch.md` §4 (4.1 Scout, 4.2 sem desk, 4.3 com desk; anti-padrões e checklist), `superpowers-workflow.md` (roteamento + exemplo de gate), `dev-process.md` §3 item 10, `assets/rules.md`.
 
 ## 1.0.1 — 2026-10-07

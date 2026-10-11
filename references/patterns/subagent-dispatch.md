@@ -142,15 +142,14 @@ CLIs disponíveis rendendo** — não uma esgotada enquanto as outras ficam para
    da cota já foi, e propor a troca.
 6. **Revisão de fase**: reviewer médio/leve, de preferência de fornecedor
    diferente do implementador — pega o ponto cego do modelo que escreveu.
-7. **Revisão do conjunto / final — invariante**: o reviewer de maior capacidade
-   entre os **elegíveis** — elegível é o worker `reviewer` cuja CLI não está
+7. **Revisão do conjunto / final — invariante**: exige um reviewer de
+   **capacidade máxima**; sem nenhum elegível nesse nível, aguardar o reset ou a
+   decisão do usuário — nunca escolher um inferior. Elegível é o worker `reviewer` cuja CLI não está
    esgotada e cuja cota aguenta uma revisão do tamanho da entrega (cota crítica
    não elimina sozinha; eliminam esgotada ou folga menor que a revisão). Empate de
-   capacidade: preferir outro fornecedor que o implementador. Nunca descer para um
-   reviewer de capacidade menor por economia; se nenhum elegível de capacidade
-   máxima existe, **dizer isso ao usuário** (entrega fica aguardando o reset ou a
-   decisão dele), não rebaixar em silêncio. Mudança arriscada: segunda opinião
-   forte de outro fornecedor.
+   capacidade: preferir outro fornecedor que o implementador. Sem elegível de
+   capacidade máxima, **dizer isso ao usuário** — não rebaixar em silêncio.
+   Mudança arriscada: segunda opinião forte de outro fornecedor.
 8. **Sugerir mudança de elenco.** Se um worker se dá mal com um tipo de trabalho
    (review achando defeito recorrente no que ele entregou, task devolvida
    incompleta por incapacidade, lentidão desproporcional) ou se outro
@@ -279,7 +278,7 @@ Em multi-repo (projeto principal + sidecar), sempre `git -C <path>` em vez de co
 
 **Subagente é função pura**: input (prompt + workspace) → output (commit + report). Side-effects fora disso são bug.
 
-**Exceção — dispatch paralelo na mesma worktree:** subagentes paralelos compartilham o índice do `.git`, então o output vira **só report** (working tree + paths tocados + mensagem de commit proposta) e quem commita é o controller, com `git add -- <paths> && git commit -q -m "msg" -- <paths>`. Detalhe em [`superpowers-workflow.md §Paralelismo`](./superpowers-workflow.md). Em dispatch sequencial, ou com uma worktree por agente, vale a forma normal acima.
+**Exceção — índice compartilhado:** em dispatch paralelo na mesma worktree, e em **todo** dispatch com desk de workers (§4.3 item 4), o output vira **só report** (working tree + paths tocados + mensagem de commit proposta) e quem commita é o controller, com `git add -- <paths> && git commit -q -m "msg" -- <paths>`. Tabela completa em [`superpowers-workflow.md`](./superpowers-workflow.md) §Commit em fase paralela ("Quem commita"). Sem desk em dispatch sequencial, ou com uma worktree por agente, vale a forma normal acima.
 
 ---
 
@@ -307,7 +306,7 @@ Padrão canônico de fase de implementação:
 2. Commit de spec/plano antes de criar worktree (uncommitted não vai).
 3. Controller cria worktree (git worktree add) + junctions de node_modules.
 4. Controller despacha subagentes contra a worktree.
-5. Subagentes commitam per-task na branch da worktree.
+5. Um commit por task na branch da worktree — feito pelo subagente (sem desk, sequencial) ou pelo controller a partir do report (fase paralela ou desk; ver §7).
 6. Ao terminar: merge ou PR → cleanup da worktree.
 ```
 
@@ -358,6 +357,7 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 ### Durante execução
 
 - [ ] Per-task commits (default) — exceção justificada por acoplamento (SHOULD)
+- [ ] Quem executa o commit segue a tabela "Quem commita" de `superpowers-workflow.md` (fase paralela ou desk → controller; worktree própria → worker) e está dito no prompt de dispatch (MUST)
 - [ ] `git diff --cached --stat` antes de cada commit (MUST)
 - [ ] Em multi-repo: `git -C <path>` em toda operação git (MUST)
 - [ ] Testes da task passaram antes do commit (MUST quando o projeto tem testes)

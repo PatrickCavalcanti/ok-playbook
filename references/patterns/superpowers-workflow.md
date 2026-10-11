@@ -43,14 +43,15 @@ de várias CLIs (Nidavellir). Detalhe completo em
   e **cada task do plano declara o worker que a implementa e o porquê**
   (dificuldade × capacidade do worker; cota da CLI).
 - Paraleliza o que for possível, de preferência em CLIs diferentes, para render
-  as cotas de todas; o **orquestrador executa os commits** — com desk, worker não
-  commita nem em fase sequencial (§Commit em fase paralela, mesma receita).
+  as cotas de todas; o **orquestrador executa os commits** — com desk, worker na
+  mesma worktree não commita nem em fase sequencial (§Commit em fase paralela,
+  tabela "Quem commita").
 - O mapa task → worker vai no **gate único** junto com o mapa de paralelismo; o
   usuário aprova ou troca. CLI perto do limite: dizer e propor troca.
 - Revisão de fase em reviewer médio/leve, de preferência de outro fornecedor que o
-  implementador; revisão final no reviewer de maior capacidade entre os elegíveis
-  (CLI não esgotada, cota que aguenta a revisão) — nunca rebaixar por economia; sem
-  nenhum elegível de capacidade máxima, dizer ao usuário.
+  implementador; revisão final exige reviewer de capacidade máxima elegível (CLI
+  não esgotada, cota que aguenta a revisão); sem nenhum nesse nível, aguardar reset
+  ou decisão do usuário — nunca um inferior.
 - Capacidade não autoriza decidir: decisão aberta ou de desenho fica no
   controller, seja qual for o worker.
 - Worker que se dá mal num tipo de trabalho, ou worker melhor possível para ele:
@@ -76,7 +77,7 @@ a taxa cair.
 | Etapa | Default do skill | Política aqui |
 |---|---|---|
 | Implementer roda steps da task | sim | sim |
-| Implementer commita ao final da task | sim | sim — **exceto em fase paralela**, onde quem commita é o controller (ver §Paralelismo) |
+| Implementer commita ao final da task | sim | sim — **exceto em fase paralela ou com desk de workers**, onde quem commita é o controller (ver §Commit em fase paralela, "Quem commita") |
 | Testes por task / review por task | sim | **não** |
 | Testes ao fim da fase | — | **só o que a fase escreveu**, rodados direto |
 | Suíte global | por task | **só via script do projeto** com verde de referência (baseline) — sem script, não roda |
@@ -126,6 +127,15 @@ Perfis mais conservadores (`dev-stable`, `review`) mantêm seus próprios pontos
 
 ### Commit em fase paralela é do controller
 
+**Quem commita** — a regra depende do índice do `.git` e do desk:
+
+| Situação | Quem commita |
+|---|---|
+| Sem desk, fase sequencial | implementer (default do skill) |
+| Fase paralela na mesma worktree (com ou sem desk) | controller, com a receita abaixo |
+| Com desk (Nidavellir), qualquer fase, mesma worktree | controller, com a receita abaixo |
+| Worktree própria por agente (índice próprio) | o worker/implementer |
+
 Subagentes paralelos na mesma worktree **compartilham o índice do `.git`**: `git add` de um pode ser capturado pelo `git commit` de outro, gerando commit com conteúdo de A e mensagem de B. Em **fase paralela**, portanto:
 
 - O implementer **não commita**. Entrega working tree + report contendo **os paths que tocou** e **a mensagem de commit proposta** (Conventional Commits, como escreveria se commitasse).
@@ -137,11 +147,11 @@ Subagentes paralelos na mesma worktree **compartilham o índice do `.git`**: `gi
   **Limite:** duas tasks que tocam o **mesmo arquivo** não se separam por pathspec — o commit leva os hunks das duas. Por isso mesmo arquivo = sequencial (§Riscos); se aconteceu, um commit só, com as duas mensagens no corpo.
 - Uma verificação por fase (não por task): `git status --porcelain` depois do lote, pra pegar arquivo deixado de fora por report impreciso.
 
-**O controller não lê diff pra commitar.** Não abre arquivo, não roda `git diff`, não julga a mudança — a mensagem vem pronta de quem tem o contexto. É execução mecânica, e é isso que mantém a janela do controller (modelo caro) barata: ~2 linhas a mais por report, ~1 linha de retorno por commit. Se for preciso ler o diff pra saber o que escrever, a regra foi violada — devolver o commit ao implementer.
+**O controller não lê diff pra commitar.** Não abre arquivo, não roda `git diff`, não julga a mudança — a mensagem vem pronta de quem tem o contexto. É execução mecânica, e é isso que mantém a janela do controller (modelo caro) barata: ~2 linhas a mais por report, ~1 linha de retorno por commit. Se for preciso ler o diff pra saber o que escrever, a regra foi violada — pedir ao implementer o report completo (paths + mensagem); o commit continua com o controller.
 
 Granularidade não se perde: um commit por task, então `git bisect` continua barato.
 
-Em **fase sequencial** nada muda — o implementer commita ao final da task (default do skill). **Exceção: com desk de workers** (Nidavellir), o controller commita toda task feita por worker, também em fase sequencial, com esta mesma receita ([`subagent-dispatch.md`](./subagent-dispatch.md) §4.3 item 4).
+Em **fase sequencial sem desk** nada muda — o implementer commita ao final da task (default do skill). **Com desk** (Nidavellir), o controller commita toda task, também em fase sequencial, com esta mesma receita ([`subagent-dispatch.md`](./subagent-dispatch.md) §4.3 item 4) — ver a tabela "Quem commita" acima.
 
 **Escape hatch:** se o custo de contexto incomodar, a saída é **worktree por agente paralelo** (índice próprio em `.git/worktrees/<name>/index`, implementer volta a commitar), não delegar o commit a outro subagente — delegar custaria mais, porque exigiria reenviar os reports.
 
@@ -166,4 +176,4 @@ Implementação roda em worktree (subagent-driven-development); brainstorm e pla
 
 ## Permissões e commits
 
-Com permissões de worktree configuradas (ver [`permissions.md`](./permissions.md)), commits per-task ficam livres — implementer commita ao final de cada task (default do skill `subagent-driven-development`). Não há política global de "batch no fim".
+Com permissões de worktree configuradas (ver [`permissions.md`](./permissions.md)), commits per-task ficam livres — o commit é por task; quem o executa segue a tabela "Quem commita" (§Commit em fase paralela): sem desk em fase sequencial, o implementer (default do skill `subagent-driven-development`); em fase paralela ou com desk, o controller. Não há política global de "batch no fim".
