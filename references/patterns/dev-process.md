@@ -94,6 +94,11 @@ metade — medido em cinco casos onde a regra violada estava *lida*):
 9. **Teste se descreve por resultado, não por contagem.** "Sem falha nova contra
    a baseline", nunca "os 47 testes passam" — número absoluto é lido como
    contrato e o implementer mexe no teste para bater o número.
+10. **Com desk de workers (Nidavellir), cada task nomeia quem a implementa** e o
+    porquê (dificuldade × capacidade do worker; cota da CLI), consultando
+    `list_workers` e a cota no momento do plano. O mapa vai no gate único junto com
+    o de paralelismo. Sem desk, vale a divisão por papel. Regra completa em
+    [`subagent-dispatch.md`](./subagent-dispatch.md) §4.
 
 ---
 

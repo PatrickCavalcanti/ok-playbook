@@ -21,19 +21,36 @@ Plugin `superpowers-marketplace` instalado via `claude /plugin install`.
 
 ---
 
-## Roteamento por papel (regra fixa, não avaliar complexidade da task)
+## Roteamento de modelos
 
-A política é por **papel**; os nomes de modelo são o mapeamento atual e podem ser
-reconfigurados por projeto sem mudar o processo. O invariante é a **assimetria**:
-implementação no modelo econômico, revisão final no mais capaz disponível.
+O invariante é um só: **a revisão do conjunto / final roda no modelo mais forte
+disponível.** Quem planeja e orquestra é a sessão que o usuário abriu — o playbook
+não fixa o modelo dela. O resto depende de a sessão ter ou não um desk de workers
+de várias CLIs (Nidavellir). Detalhe completo em
+[`subagent-dispatch.md`](./subagent-dispatch.md) §4.
+
+**Sem desk** — divisão por papel (não avaliar complexidade da task):
 
 | Papel | Hoje mapeado para |
 |---|---|
-| Sessão principal (brainstorm + plan) | Opus (iniciar a sessão com ele via settings ou `/model`) |
-| Implementer (executa tarefas do plano) | Sonnet |
-| Spec reviewer (conformidade com spec) | Sonnet |
-| Revisão de fase (qualidade, agentes separados) | Sonnet |
-| Revisão forte (conjunto, final) | Opus |
+| Scout / Implementer | Sonnet |
+| Revisão de fase (spec + qualidade, agentes separados) | Sonnet |
+| Revisão forte (conjunto, final) | Opus (ou o mais forte disponível) |
+
+**Com desk (Nidavellir)** — o plano distribui:
+
+- O planejador consulta `list_workers` e a cota das CLIs (`get_cli_usage_limits`)
+  e **cada task do plano declara o worker que a implementa e o porquê**
+  (dificuldade × capacidade do worker; cota da CLI).
+- Paraleliza o que for possível, de preferência em CLIs diferentes, para render
+  as cotas de todas; o **orquestrador gerencia os commits** (§Commit em fase
+  paralela).
+- O mapa task → worker vai no **gate único** junto com o mapa de paralelismo; o
+  usuário aprova ou troca. CLI perto do limite: dizer e propor troca.
+- Revisão de fase em reviewer médio/leve, de preferência de outro fornecedor que o
+  implementador; revisão final no reviewer mais forte com cota livre.
+- Worker que se dá mal num tipo de trabalho, ou worker melhor possível para ele:
+  o orquestrador **sugere** a troca/ajuste no report da fase ou da entrega.
 
 Nota: esta política substitui a seção "Model Selection" do skill
 `subagent-driven-development` que usa linguagem vaga ("most capable", "fast
@@ -84,6 +101,10 @@ Classificar tasks:
 A classificação é apresentada **uma vez, para o plano inteiro**, antes do primeiro dispatch — não fase a fase:
 
 > "O plano tem 3 fases. Fase 1: A→B sequenciais. Fase 2: C/D/E em paralelo (arquivos disjuntos), commit por mim. Fase 3: F sozinha. Testes e reviews ao fim de cada fase. OK?"
+
+Com desk (Nidavellir), o mesmo gate leva o mapa de workers e a cota que o motivou:
+
+> "Fase 2: C (mecânica) → implementer-luna, D (média) → implementer-haiku, E (difícil) → implementer-sol, em paralelo em três CLIs. Revisão de fase: reviewer-gemini. Revisão final: reviewer-opus. Cota Claude em 80% — deixei só D nela. OK, ou troca algum?"
 
 Aprovado o mapa, **executar todas as fases sem novo pedido de OK**. Entre fases o controller *reporta* (o que entrou, o que os reviews acharam) — não pergunta. Parar entre fases de um plano aprovado contradiz o perfil `dev-early` ("executar planos longos sem pedir confirmação a cada etapa", ver [`profiles.md`](./profiles.md)) e é a fricção que essa regra existe pra evitar.
 

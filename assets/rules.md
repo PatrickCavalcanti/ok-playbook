@@ -35,7 +35,7 @@ Este projeto foi configurado pela skill `ok-playbook`. Os patterns estão em `<p
 - Todo agente abre arquivo de feedback como primeira ação (ver `feedback-loop.md §6` e `agent.md §4.2`).
 - Status `pending-review` só o processador (`docs-review`) muda.
 - Subagentes não instalam deps, não tomam decisão arquitetural, não despacham outros subagentes (`subagent-dispatch.md §7`).
-- Política de modelos para subagentes: implementer=Sonnet, revisão de fase (spec + qualidade)=Sonnet, revisão do conjunto/final=Opus (ver bloco "Workflow superpowers" abaixo).
+- Política de modelos: revisão do conjunto/final sempre no modelo mais forte disponível; o resto depende de haver desk de workers (ver bloco "Workflow superpowers" abaixo).
 
 ### Memórias persistentes deste projeto
 
@@ -58,14 +58,23 @@ Anti-pattern: "salva esta lista de PRs". Resposta correta: perguntar o que foi *
 
 Fluxo: `brainstorming` → `writing-plans` → `subagent-driven-development` (ou `executing-plans` em sessão separada, só a pedido do usuário). Detalhes em `<playbook-root>patterns/superpowers-workflow.md`.
 
-Roteamento fixo de modelos (não avaliar complexidade da task):
+Roteamento de modelos (detalhe em `<playbook-root>patterns/subagent-dispatch.md` §4). **Invariante: revisão do conjunto / final no modelo mais forte disponível.** Quem planeja e orquestra é a sessão aberta — sem regra de modelo.
+
+**Sem desk de workers** — divisão por papel, sem avaliar complexidade da task:
 
 | Papel | Model |
 |---|---|
-| Sessão principal (brainstorm + plan) | Opus |
-| Implementer (subagente que executa tarefas) | Sonnet |
+| Scout / Implementer | Sonnet |
 | Revisão de fase — spec + qualidade (subagentes separados) | Sonnet |
-| Revisão do conjunto / final (gate da entrega) | Opus |
+| Revisão do conjunto / final (gate da entrega) | Opus (ou o mais forte disponível) |
+
+**Com desk (Nidavellir — `list_workers`/`run_worker`)** — o plano distribui:
+
+- Consultar `list_workers` e a cota das CLIs (`get_cli_usage_limits`) ao planejar; **cada task declara o worker que a implementa e o porquê** (dificuldade × capacidade do worker; cota). Worker da própria CLI → subagente nativo.
+- Paralelizar o que for possível, de preferência em CLIs diferentes, para render as cotas de todas; o **orquestrador gerencia os commits** (receita de fase paralela abaixo).
+- O mapa task → worker (e revisores) vai no gate único, junto com o de paralelismo; o usuário aprova ou troca. CLI perto do limite: dizer qual e quanto já foi, e propor troca.
+- Revisão de fase: reviewer médio/leve, de preferência de outro fornecedor que o implementador. Revisão final: o reviewer mais forte com cota livre (CLI dele crítica → o outro forte, avisando).
+- Worker que se dá mal num tipo de trabalho, ou worker melhor disponível para ele: **sugerir** troca/ajuste ao usuário no report da fase ou da entrega (não é parada nova).
 
 Substitui a seção "Model Selection" do skill `subagent-driven-development` que usa linguagem vaga ("most capable", "fast cheap").
 

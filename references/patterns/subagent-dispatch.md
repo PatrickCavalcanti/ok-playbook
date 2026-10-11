@@ -43,7 +43,7 @@ Este doc serve a três usos:
 | Task experimental que pode ser descartada | **Sim** (subagente em worktree contém o estrago) |
 | Edição de 1 arquivo / 1 commit | **Não** (overhead não compensa) |
 | Tarefa que precisa de revisão entre passos | **Sim** (papéis separados de implementer/reviewer cabem aqui) |
-| Levantamento amplo de contexto antes de decidir (varrer N arquivos/módulos) | **Sim** (Scout em Sonnet; ver §4.1) |
+| Levantamento amplo de contexto antes de decidir (varrer N arquivos/módulos) | **Sim** (Scout no modelo menor; ver §4.1) |
 | Leitura pontual de 1 arquivo cujo path já se conhece | **Não** (ler inline; overhead de dispatch não compensa) |
 | Trabalho de doc/spec/plano | **Não** (esses ficam no controller; ver [`worktree.md §3`](./worktree.md)) |
 
@@ -53,44 +53,104 @@ Este doc serve a três usos:
 
 ## 4. Política de modelos
 
-> **Regra fixa por papel — não avaliar complexidade da task.**
+> **Invariante: a revisão do conjunto / final roda no modelo mais forte disponível.**
+> O resto depende do ambiente: sem desk de workers vale a divisão por papel
+> (§4.2); com desk (Nidavellir) o plano distribui o trabalho entre as CLIs (§4.3).
 
-| Papel do subagente | Modelo |
-|---|---|
-| **Scout** (varre arquivos, extrai o relevante, devolve resumo — não muda código) | menor capaz |
-| **Implementer** (executa task do plano) | menor capaz (rápido, barato) |
-| **Spec reviewer** (verifica conformidade com spec) | menor capaz |
-| **Revisão de fase** (qualidade, ao fim de cada fase; agentes separados) | menor capaz |
-| **Revisão do conjunto / final** (gate da entrega) | maior capacidade |
+| Papel | Sem desk (§4.2) | Com desk — Nidavellir (§4.3) |
+|---|---|---|
+| **Sessão principal** (planeja e orquestra) | a sessão que o usuário abriu — o playbook não fixa | idem |
+| **Scout** (varre arquivos, extrai o relevante, devolve resumo — não muda código) | menor capaz | worker `scout` escolhido no plano |
+| **Implementer** (executa task do plano) | menor capaz (rápido, barato) | worker `implementer` **por task**, pela dificuldade e pela cota |
+| **Revisão de fase** (spec + qualidade, ao fim de cada fase; agentes separados) | menor capaz | worker `reviewer` médio/leve, de preferência de outro fornecedor que o implementador |
+| **Revisão do conjunto / final** (gate da entrega) | maior capacidade | `reviewer` de maior capacidade com cota livre |
 
-Tradução prática (Anthropic em 2026-Q2):
-
-- Scout / implementer / spec reviewer / revisão de fase → **Sonnet**.
-- Revisão do conjunto / final → **Opus**.
-
-Alinhado a [`superpowers-workflow.md`](./superpowers-workflow.md).
-
-**Por que fixa**: avaliar caso-a-caso "esta task é complexa o bastante para Opus?" introduz variabilidade arbitrária. Implementação repetitiva no Sonnet, decisão arquitetural no Opus — separação por papel é mais robusta que por percepção de complexidade.
-
-Esta política **sobrescreve** linguagem vaga em skills externas que digam coisas como "use o modelo mais capaz" ou "use um modelo rápido e barato" sem especificar papel.
+Alinhado a [`superpowers-workflow.md`](./superpowers-workflow.md). Esta política
+**sobrescreve** linguagem vaga em skills externas ("use o modelo mais capaz",
+"use um modelo rápido e barato") sem especificar papel.
 
 ### 4.1 Scout: levantamento de contexto antes da decisão
 
-Levantamento amplo (varrer múltiplos arquivos/módulos, mapear convenções, extrair contratos, descobrir onde algo mora) é trabalho de leitura rápida — papel **Scout**, despachado em **Sonnet** (tipicamente o agente `Explore`). O controller (Opus) recebe só a conclusão e decide.
+Levantamento amplo (varrer múltiplos arquivos/módulos, mapear convenções, extrair contratos, descobrir onde algo mora) é trabalho de leitura rápida — papel **Scout**, despachado no modelo menor (sem desk: Sonnet, tipicamente o agente `Explore`; com desk: um worker `scout`). O controller recebe só a conclusão e decide.
 
 Padrão:
 
-1. Controller (Opus) identifica **o que precisa saber** — não o que precisa fazer.
-2. Despacha um ou mais Scouts (Sonnet) com escopo de leitura claro: "leia X, extraia Y, devolva resumo — não proponha mudança".
-3. Controller sintetiza os retornos e define a implementação em Opus.
+1. Controller identifica **o que precisa saber** — não o que precisa fazer.
+2. Despacha um ou mais Scouts com escopo de leitura claro: "leia X, extraia Y, devolva resumo — não proponha mudança".
+3. Controller sintetiza os retornos e define a implementação.
 
 **Limites do Scout:**
 
 - **Não compartilha o contexto da conversa.** Recebe só o prompt. Serve a levantamento bem-escopado, não a tarefa que depende da nuance da conversa inteira.
 - **Leitura pontual fica no controller.** Um arquivo único cujo path já se conhece: ler inline é mais rápido que orquestrar um Scout. Scout compensa quando há varredura (múltiplos arquivos, convenção a descobrir, dump grande que sujaria a janela do controller).
-- **Scout não decide.** "Levante e já implemente" empurra síntese para o Sonnet — viola §6.3. Scout devolve dados; Opus decide.
+- **Scout não decide.** "Levante e já implemente" empurra síntese para o modelo menor — viola §6.3. Scout devolve dados; o controller decide.
 
-**Mecanismo:** o modelo da sessão principal **não troca no meio da tarefa**. Skill/CLAUDE.md não fazem hot-swap do controller. O ganho "Sonnet lê, Opus decide" vem de *delegar a leitura a um subagente Sonnet*, não de alternar o modelo do thread principal.
+**Mecanismo:** o modelo da sessão principal **não troca no meio da tarefa**. Skill/CLAUDE.md não fazem hot-swap do controller. O ganho "o menor lê, o controller decide" vem de *delegar a leitura a um subagente/worker*, não de alternar o modelo do thread principal.
+
+### 4.2 Sem desk de workers: divisão por papel
+
+Quando a sessão só tem os subagentes da própria CLI, a divisão é por papel:
+implementação no modelo econômico, revisão final no mais forte.
+
+Tradução prática (Anthropic, 2026-Q4):
+
+- Scout / implementer / revisão de fase → **Sonnet**.
+- Revisão do conjunto / final → **Opus** (ou o modelo mais forte disponível no fornecedor).
+
+**Por que por papel aqui**: sem ver cotas nem outros fornecedores, julgar caso a
+caso "esta task merece o modelo grande?" é variabilidade arbitrária. A
+assimetria fixa (econômico implementa, forte revisa) é mais robusta.
+
+### 4.3 Com desk (Nidavellir): o plano distribui entre as CLIs
+
+Quando a sessão alcança workers de várias CLIs (`list_workers`, `run_worker`,
+`get_cli_usage_limits`), a escolha deixa de ser fixa e **vira parte do plano**. O
+objetivo é duplo: cada task no worker que dá conta dela, e **as cotas de todas as
+CLIs disponíveis rendendo** — não uma esgotada enquanto as outras ficam paradas.
+
+1. **Levantar elenco e cota no momento do plano.** `list_workers` (description,
+   `type`, `priority`, `cota`); para trabalho longo, `get_cli_usage_limits`. Não
+   decidir de memória — elenco e cota mudam. Cota sem leitura (`nivel: null`) não
+   é 0%: pesar pelo que se sabe da CLI.
+2. **Cada task declara o implementador e o porquê**, numa linha do plano
+   (`Implementer: <worker> — <dificuldade>; <cota>`). Critérios:
+   - **dificuldade × capacidade** — `priority` do worker e o "use para / não use
+     para" da description; task aberta ou com decisão de desenho vai para worker
+     forte, task mecânica e bem especificada para worker leve;
+   - **cota** — espalhar a carga pelas CLIs; não dar trabalho longo a CLI em cota
+     crítica ou esgotada (ela pode parar no meio);
+   - **worker da própria CLI** (`mesmaCli: true`) → preferir o subagente nativo
+     (ferramenta Agent) com o mesmo modelo.
+3. **Paralelizar o que for possível.** Tasks em arquivos disjuntos vão em
+   paralelo, de preferência em CLIs diferentes — cotas diferentes trabalhando ao
+   mesmo tempo. As regras de colisão continuam (mesmo arquivo ou lockfile =
+   sequencial; em dúvida, sequencializar).
+4. **O orquestrador gerencia os commits.** Em fase paralela o worker não commita:
+   devolve paths + mensagem, e o controller commita com pathspec
+   ([`superpowers-workflow.md`](./superpowers-workflow.md) §Commit em fase
+   paralela). Worker de outra CLI segue a mesma regra — o índice do `.git` é o
+   mesmo. O controller não lê diff para commitar.
+5. **Apresentar e sugerir no gate.** O mapa task → worker (e os revisores) entra
+   no **gate único** do plano, junto com o mapa de paralelismo; o usuário aprova
+   ou troca. Se o plano dá trabalho a CLI perto do limite, dizer qual é e quanto
+   da cota já foi, e propor a troca.
+6. **Revisão de fase**: reviewer médio/leve, de preferência de fornecedor
+   diferente do implementador — pega o ponto cego do modelo que escreveu.
+7. **Revisão do conjunto / final — invariante**: o reviewer de maior capacidade
+   disponível. Se a CLI dele está em cota crítica, usar o outro reviewer forte (de
+   outro fornecedor) e dizer no report que trocou. Mudança arriscada: segunda
+   opinião forte de outro fornecedor.
+8. **Sugerir mudança de elenco.** Se um worker se dá mal com um tipo de trabalho
+   (BLOCKED repetido, review achando defeito recorrente no que ele entregou,
+   lentidão desproporcional) ou se outro worker/modelo serviria melhor, o
+   orquestrador **sugere** ao usuário: trocar o worker no resto do plano, ajustar
+   description/`priority`, criar ou aposentar worker. A sugestão vai no report da
+   fase ou da entrega — não é parada nova; dentro do plano aprovado, trocar um
+   worker que está falhando por outro de capacidade igual ou maior é decisão do
+   controller, relatada.
+
+**Risco a vigiar**: escolher sempre o mais barato. Por isso cada escolha vem
+justificada no plano, e a revisão final forte não se negocia.
 
 ---
 
@@ -245,12 +305,14 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 
 | Anti-padrão | Por quê |
 |---|---|
-| Avaliar complexidade da task para escolher modelo | Variabilidade arbitrária; usa regra por papel (§4) |
-| Implementer em Opus "porque é importante" | Cara sem ganho; Sonnet implementa, Opus revisa |
-| Revisão do conjunto / final em Sonnet "para economizar" | É o gate da entrega, onde o modelo grande compensa; economizar ali zera o valor da revisão (a revisão de fase em Sonnet é a política, §4) |
-| Levantamento amplo feito inline no Opus quando dava pra delegar a um Scout Sonnet | Queima janela e tempo do controller; Scout devolve só o resumo (§4.1) |
+| Sem desk: avaliar complexidade da task para escolher modelo | Variabilidade arbitrária; usa regra por papel (§4.2) |
+| Com desk: escolher worker sem justificativa no plano, ou sempre o mais barato | A escolha por task só se sustenta com o porquê escrito (§4.3) |
+| Com desk: decidir o elenco de memória, sem `list_workers`/cota | Elenco e cota mudam; CLI esgotada para no meio da task |
+| Implementer no modelo mais forte "porque é importante" | Cara sem ganho; o forte compensa na revisão final |
+| Revisão do conjunto / final em modelo menor "para economizar" | É o gate da entrega, onde o modelo grande compensa; economizar ali zera o valor da revisão (a revisão de fase no modelo menor é a política, §4) |
+| Levantamento amplo feito inline no controller quando dava pra delegar a um Scout | Queima janela e tempo do controller; Scout devolve só o resumo (§4.1) |
 | Scout despachado para ler 1 arquivo de path conhecido | Overhead de dispatch > ganho; leia inline |
-| Scout que "já implementa" o que levantou | Empurra decisão pro Sonnet; Scout devolve dados, Opus decide |
+| Scout que "já implementa" o que levantou | Empurra decisão pro modelo menor; Scout devolve dados, o controller decide |
 | Subagente decidindo escopo quando o plano não cobre | Improviso silencioso vira divergência plano ↔ código |
 | Subagente instalando dep | Quebra centralização do ambiente; package-lock divergente |
 | Controller pulando discovery (Task 0) quando spec vem de fora | Desvios viram bugs descobertos na metade da execução |
@@ -274,7 +336,7 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 
 ### Por dispatch
 
-- [ ] Modelo escolhido por papel (§4), não por complexidade (MUST)
+- [ ] Modelo escolhido conforme §4: sem desk, por papel; com desk, worker por task com o porquê no plano e mapa aprovado no gate (MUST)
 - [ ] Prompt do subagente tem task única, contexto, escopo, critério de done (MUST)
 - [ ] Prompt instrui devolver BLOCKED em vez de improvisar (MUST)
 - [ ] Subagente não foi instruído a instalar deps (MUST)
@@ -299,8 +361,8 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 
 ### Anti-padrões ausentes
 
-- [ ] **NÃO** existe subagente em Opus para implementação
-- [ ] **NÃO** existe subagente em Sonnet para a revisão do conjunto / final
+- [ ] **NÃO** existe implementação no modelo mais forte sem motivo escrito no plano
+- [ ] **NÃO** existe revisão do conjunto / final em modelo menor que o mais forte disponível
 - [ ] **NÃO** existe subagente instalando deps
 - [ ] **NÃO** existe subagente despachando outro subagente
 - [ ] **NÃO** existe commit feito confiando no cwd em multi-repo
@@ -327,6 +389,7 @@ Para evoluir:
 - Nova categoria de papel descoberta (além de implementer / spec reviewer / code quality / final) → §4.
 - Padrão de prompt do subagente provado melhor em uso real → §6.3.
 - Nova armadilha de multi-repo identificada → §8.
-- Nova plataforma de modelo que mude a tradução de "menor capaz / maior capacidade" → §4 (tradução prática).
+- Nova plataforma de modelo que mude a tradução de "menor capaz / maior capacidade" → §4.2 (tradução prática).
+- Critério de distribuição entre workers provado em uso (ou worker que falhou num tipo de trabalho) → §4.3.
 
 Mudanças aplicadas via PR + revisão. Sem mudança silenciosa.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 — 2026-10-11
+
+**Política de modelos deixa de ser fixa quando há desk de workers.**
+
+- Invariante único: a revisão do conjunto / final roda no modelo mais forte disponível. Quem planeja e orquestra é a sessão aberta — o playbook não fixa o modelo dela.
+- **Sem desk** (só subagentes da própria CLI): divisão por papel como antes — Scout/implementer/revisão de fase no modelo econômico (Sonnet), revisão final no mais forte (Opus).
+- **Com desk (Nidavellir)**: o plano consulta `list_workers` e a cota das CLIs e cada task declara o worker que a implementa e o porquê (dificuldade × capacidade; cota); paraleliza em CLIs diferentes para render todas as cotas; o orquestrador gerencia os commits; o mapa task → worker vai no gate único; o orquestrador sugere troca de worker que se dá mal num tipo de trabalho.
+- Arquivos: `subagent-dispatch.md` §4 (4.1 Scout, 4.2 sem desk, 4.3 com desk; anti-padrões e checklist), `superpowers-workflow.md` (roteamento + exemplo de gate), `dev-process.md` §3 item 10, `assets/rules.md`.
+
 ## 1.0.1 — 2026-10-07
 
 - `SKILL.md`: seção **"Migração de um projeto 0.x"** (M1–M6) — inventário, remoção do formato antigo por tipo (submódulo, dependência npm, cópia solta) junto com o reapontamento das referências, configuração com o que esperar no `plan`, fusão do CLAUDE.md regra a regra, provas e cuidado no merge. O Modo 1 detecta o formato antigo (passo 0) e desvia para ela.
