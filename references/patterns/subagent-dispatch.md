@@ -278,7 +278,7 @@ Em multi-repo (projeto principal + sidecar), sempre `git -C <path>` em vez de co
 
 **Subagente é função pura**: input (prompt + workspace) → output (commit + report). Side-effects fora disso são bug.
 
-**Exceção — índice compartilhado:** em dispatch paralelo na mesma worktree, e em **todo** dispatch com desk de workers (§4.3 item 4), o output vira **só report** (working tree + paths tocados + mensagem de commit proposta) e quem commita é o controller, com `git add -- <paths> && git commit -q -m "msg" -- <paths>`. Tabela completa em [`superpowers-workflow.md`](./superpowers-workflow.md) §Commit em fase paralela ("Quem commita"). Sem desk em dispatch sequencial, ou com uma worktree por agente, vale a forma normal acima.
+**Exceção — índice compartilhado:** em dispatch paralelo na mesma worktree, e em todo dispatch com desk de workers **na mesma worktree** (§4.3 item 4), o output vira **só report** (working tree + paths tocados + mensagem de commit proposta) e quem commita é o controller, com `git add -- <paths> && git commit -q -m "msg" -- <paths>`. Tabela completa em [`superpowers-workflow.md`](./superpowers-workflow.md) §Commit em fase paralela ("Quem commita"). Sem desk em dispatch sequencial, ou com uma worktree por agente, vale a forma normal acima.
 
 ---
 
