@@ -319,6 +319,14 @@ async function fechar(cfg) {
 
   log(`\n▸ fechando worktree "${nome}"${dryRun ? ' [DRY RUN]' : ''}\n`);
 
+  // ── o destino TEM que ser uma worktree registrada ─────────────────────────
+  // Pasta solta em `.worktrees/` faria as guardas abaixo olharem a MAIN (o git
+  // sobe até ela: status limpo, branch main) e passarem em silêncio. Sem registro
+  // não há o que fechar — e nada aqui pode apagar o que o git não conhece.
+  const reg = entradaRegistrada(destino);
+  if (!reg) falta(`${destino} existe, mas não é uma worktree registrada (git worktree list) — nada foi tocado. Se for sobra de uma worktree antiga, confira o conteúdo e apague à mão.`);
+  if (reg.locked) falta(`a worktree "${nome}" está travada (git worktree lock${reg.locked === true ? '' : `: ${reg.locked}`}) — nada foi tocado. Destrave com \`git worktree unlock\` se for o caso.`);
+
   // ── trabalho não salvo ────────────────────────────────────────────────────
   const naoSalvo = capture('git status --porcelain', destino);
   if (naoSalvo && !flag('--force')) {
@@ -382,7 +390,12 @@ async function fechar(cfg) {
   // `node_modules/.pnpm/...` com caminho > 260 caracteres e deixa a pasta. Aqui as
   // guardas e a remoção dos links já passaram; o removedor próprio termina o
   // serviço sem nunca descer em link. Preso por processo → fica em `travados`.
+  // SÓ roda se o git desregistrou: ainda registrada (lock, recusa) = o git
+  // disse não, e o removedor não o contorna.
   let travados = [];
+  if (!dryRun && entradaRegistrada(destino)) {
+    falta(`o git não desregistrou a worktree "${nome}" (travada ou recusou o remove — mensagem acima). A pasta ${destino} NÃO foi apagada pelo removedor.`);
+  }
   if (fs.existsSync(destino)) {
     log('\n  pasta sobrou após o `git worktree remove` — removedor próprio (não desce em link):');
     const r = removeArvoreSemSeguirLink(destino, { dryRun, dirRaiz: path.join(raiz, '.worktrees') });
@@ -409,6 +422,23 @@ async function fechar(cfg) {
     falta(`worktree desregistrada, mas a pasta ${destino} ainda existe${preso} (processo com ela aberta como cwd ou arquivo em uso? feche-o e apague à mão).`);
   }
   ok(`worktree "${nome}" fechada`);
+}
+
+/**
+ * Entrada de `git worktree list --porcelain` para `destino` (caminho canônico,
+ * sem diferenciar maiúscula no Windows), ou null. `locked` = true | motivo | undefined.
+ */
+function entradaRegistrada(destino) {
+  const canon = (p) => { const r = path.resolve(p).replace(/\\/g, '/').replace(/\/+$/, ''); return process.platform === 'win32' ? r.toLowerCase() : r; };
+  const alvo = canon(destino);
+  for (const bloco of capture('git worktree list --porcelain', raiz).split(/\r?\n\r?\n/)) {
+    const linhas = bloco.split(/\r?\n/);
+    const wt = linhas.find((l) => l.startsWith('worktree '));
+    if (!wt || canon(wt.slice('worktree '.length).trim()) !== alvo) continue;
+    const lk = linhas.find((l) => l === 'locked' || l.startsWith('locked '));
+    return { locked: lk ? (lk.slice(7).trim() || true) : undefined };
+  }
+  return null;
 }
 
 /**
@@ -453,6 +483,10 @@ function removeArvoreSemSeguirLink(topo, { dryRun = false, dirRaiz } = {}) {
     try { op(); return true; }
     catch (e) {
       if (e && e.code === 'EPERM') {
+        // chmod SEGUE link e mudaria o atributo do ALVO: só em não-link.
+        let ehLink = true;
+        try { ehLink = fs.lstatSync(p).isSymbolicLink(); } catch { /* some: trata como link, não mexe */ }
+        if (ehLink) { trava(p, e); return false; }
         try { fs.chmodSync(p, 0o666); op(); return true; } catch (e2) { trava(p, e2); return false; }
       }
       if (e && e.code === 'ENOENT') return true; // já foi
