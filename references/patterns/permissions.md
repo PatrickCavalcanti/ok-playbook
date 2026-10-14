@@ -207,7 +207,7 @@ O template canônico não trata todo diretório igual. A distinção que importa
 
 | Área | Política |
 |---|---|
-| `<projeto>/.worktrees/…` | Descartável — destrutivo livre (`rm`, `mv`, `git reset --hard`) |
+| `<projeto>/.worktrees/…` | Descartável — destrutivo livre (`rm`, `mv`, `git reset --hard`), **exceto** git de estado compartilhado (`stash drop/pop`, `branch -D`, `worktree remove/prune`, `tag -d`), que pede em todo escopo |
 | `<projeto>` (root) | Checkout de verdade — **sem destrutivo**, pede confirmação |
 | Scratch (`/tmp`, temp do Claude) | Descartável por definição — escrita livre |
 | Projetos irmãos | **Só leitura** — escrita sempre pede |
@@ -227,8 +227,9 @@ node .claude/hooks/tools/medir-comandos.mjs
 # 2. Cobertura da versão atual do hook (baseline).
 node .claude/hooks/tools/hook-replay.mjs
 
-# 3. Portar o hook; ajustar SCRATCH, LEITURA e os whitelists com o
-#    que o passo 1 mostrou.
+# 3. Portar o hook; declarar scratch, leitura e headsProjeto em
+#    .claude/hooks/areas.local.json com o que o passo 1 mostrou
+#    (não edite lib/areas.mjs).
 
 # 4. Suite de casos — os NEGATIVOS são o que importa.
 node .claude/hooks/tools/hook-test.mjs
@@ -292,21 +293,27 @@ O lado PowerShell é mais simples que o de Bash:
 
 ### Template canônico do playbook
 
-`.claude/hooks/auto-approve-project-bash.mjs` é o template canônico. `PROJETO` é calculado em tempo de execução; `SCRATCH` / `LEITURA` são ajustados na instalação, guiados pela medição do passo 1. Use-o como base pra novos hooks.
+`.claude/hooks/auto-approve-project-bash.mjs` é o template canônico. `PROJETO` é calculado em tempo de execução; `scratch` / `leitura` / `headsProjeto` vão no `areas.local.json` do projeto, guiados pela medição do passo 1. Use-o como base pra novos hooks.
 
 > **Renomeado.** Chamava-se `auto-approve-worktree-bash.js`, e o nome foi parte do problema: prometia menos do que precisava fazer, e por isso ninguém notou que o root do projeto — a maioria das chamadas — estava descoberto. Ao migrar, **remova o registro antigo de `settings.json`**, senão os dois hooks rodam.
 
 ### Customizar: onde mexer para cada coisa
 
-O hook é feito para ser editado — a whitelist envelhece junto com o projeto. O mapa:
+A whitelist envelhece junto com o projeto, mas **o que é do projeto não se edita no `lib/areas.mjs`**: ele fica idêntico ao canon (edição local vira `customizado` e trava a atualização). A configuração do projeto mora em `.claude/hooks/areas.local.json`, opcional, lido a cada execução:
+
+```json
+{ "scratch": ["c:/scratch"], "leitura": ["e:/projetos/irmao"], "headsProjeto": ["drizzle-kit"] }
+```
+
+Todas as chaves são arrays de strings, opcionais, e **somam** aos defaults. Paths absolutos (o hook canonicaliza). JSON ausente ou inválido = só os defaults — o hook nunca quebra por causa dele, só aprova menos; com `OK_HOOK_DEBUG=1` o stderr diz por que foi ignorado. O mapa:
 
 | Quero… | Mexa em | Onde exatamente |
 |---|---|---|
-| Liberar mais um comando de build/test (`vite`, `drizzle-kit`, CLI própria) | `lib/areas.mjs` | `HEADS_PROJETO` — só o **basename** (`node_modules/.bin/x` já casa) |
-| Liberar um comando de leitura em **todas** as áreas, inclusive irmãos | `lib/areas.mjs` | `HEADS_LEITURA` |
-| Ler um projeto irmão novo | `lib/areas.mjs` | `LEITURA` — path absoluto, lowercase. **Nunca dá escrita** |
-| Marcar uma área descartável (escrita e `rm` livres) | `lib/areas.mjs` | `SCRATCH` |
-| Restringir um comando por argumento (espelhar rule limitada) | `lib/areas.mjs` | `CHECAGENS_DE_ARGUMENTO` — devolver `false` defere |
+| Liberar mais um comando de build/test (`vite`, `drizzle-kit`, CLI própria) | `areas.local.json` | `headsProjeto` — só o **basename** (`node_modules/.bin/x` já casa) |
+| Liberar um comando de leitura em **todas** as áreas, inclusive irmãos | `lib/areas.mjs` | `HEADS_LEITURA` (mudança de canon — proponha ao playbook) |
+| Ler um projeto irmão novo | `areas.local.json` | `leitura` — path absoluto. **Nunca dá escrita** |
+| Marcar uma área descartável (escrita e `rm` livres) | `areas.local.json` | `scratch` |
+| Restringir um comando por argumento (espelhar rule limitada) | `lib/areas.mjs` | `CHECAGENS_DE_ARGUMENTO` — devolver `false` defere (mudança de canon) |
 | Liberar/segurar um cmdlet PowerShell | `auto-approve-project-powershell.mjs` | `INERTES`, `ESCRITA`, `REMOCAO`; verbo de leitura já passa por construção |
 | Um parâmetro PS está comendo o path seguinte | `auto-approve-project-powershell.mjs` | `SWITCHES` — parâmetro que não leva valor |
 | Proibir algo de vez | `.claude/settings.json` | `permissions.deny` — não adianta tirar do whitelist |

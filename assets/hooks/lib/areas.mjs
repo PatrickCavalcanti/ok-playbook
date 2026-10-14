@@ -11,12 +11,58 @@
  * conjunto substituiu.
  *
  * ─────────────────────────── PARAMETRIZAÇÃO ─────────────────────────────────
- * PROJETO é calculado em tempo de execução (nada a preencher). Ajuste SCRATCH /
- * LEITURA e os whitelists abaixo na instalação, e calibre MEDINDO (`tools/medir-comandos.mjs`), não adivinhando.
+ * NÃO EDITE ESTE ARQUIVO: ele é idêntico ao canon em todo projeto, e edição
+ * local vira "customizado" e trava a atualização do playbook. Ajuste
+ * `.claude/hooks/areas.local.json` (opcional, ao lado de `lib/`):
+ *
+ *   { "scratch": ["c:/scratch"],            // área descartável (escrita e rm livres)
+ *     "leitura": ["e:/projetos/irmao"],     // projeto irmão lido, nunca escrito
+ *     "headsProjeto": ["drizzle-kit"] }     // bin do projeto (basename)
+ *
+ * Todas as chaves são opcionais e SOMAM aos defaults abaixo (paths absolutos;
+ * a canonicalização é feita aqui). JSON ausente ou inválido = só os defaults —
+ * o hook nunca quebra por causa dele (com OK_HOOK_DEBUG, o stderr avisa).
+ * PROJETO é calculado em tempo de execução (nada a preencher). Calibre MEDINDO
+ * (`tools/medir-comandos.mjs`), não adivinhando.
  */
 
+import { readFileSync } from 'node:fs';
 import { dirname, resolve as resolverPath } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+/**
+ * Lê `../areas.local.json` (relativo a este arquivo), uma vez por execução e de
+ * forma síncrona. Qualquer problema → `{}` (só os defaults): é a direção segura,
+ * porque área a menos significa aprovar menos. Tudo-ou-nada para o que está
+ * malformado (chave que não é array de strings); entrada de path que não é
+ * absoluta é descartada sozinha. Roda antes de `DEBUG` ser inicializado (por isso
+ * lê OK_HOOK_DEBUG direto); `canon`/`commandBasename` são function declarations.
+ */
+const LOCAL = (() => {
+  const aviso = (m) => { if (process.env.OK_HOOK_DEBUG) process.stderr.write(`[hook] areas.local.json: ${m}\n`); };
+  let bruto;
+  try {
+    bruto = readFileSync(resolverPath(dirname(fileURLToPath(import.meta.url)), '..', 'areas.local.json'), 'utf8');
+  } catch { return {}; } // ausente é o caso normal
+  try {
+    const j = JSON.parse(bruto.replace(/^\uFEFF/, ''));
+    if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('a raiz precisa ser um objeto');
+    const lista = (k) => {
+      if (j[k] == null) return [];
+      if (!Array.isArray(j[k]) || !j[k].every((s) => typeof s === 'string')) throw new Error(`"${k}" precisa ser um array de strings`);
+      return j[k];
+    };
+    const paths = (k) => lista(k).map((p) => canon(p)).filter((p) => {
+      const ok = /^([a-z]:)?\/./.test(p); // absoluto; `c:` sozinho (drive inteiro) ou relativo não entram
+      if (!ok) aviso(`"${k}": ignorado (precisa ser path absoluto): ${p}`);
+      return ok;
+    });
+    return { scratch: paths('scratch'), leitura: paths('leitura'), headsProjeto: lista('headsProjeto').map(commandBasename).filter(Boolean) };
+  } catch (e) {
+    aviso(`inválido, usando só os defaults (${e.message})`);
+    return {};
+  }
+})();
 
 /**
  * Path do projeto: ABSOLUTO, lowercase, forward slashes, COM drive.
@@ -44,9 +90,10 @@ export const PLUGINS = `${(process.env.USERPROFILE || process.env.HOME || '').re
  */
 export const SCRATCH = [
   '/tmp',
-  // + áreas descartáveis próprias do projeto (ex.: 'c:/scratch' no Windows)
   `${(process.env.TEMP || process.env.TMP || '').replace(/\\/g, '/').toLowerCase()}/claude`,
 ].filter((p) => p && p !== '/claude');
+// + áreas descartáveis próprias do projeto: `scratch` em areas.local.json
+SCRATCH.push(...(LOCAL.scratch || []));
 
 /**
  * Projetos irmãos e caches: leitura livre, escrita nunca.
@@ -55,9 +102,10 @@ export const SCRATCH = [
  */
 export const LEITURA = [
   `${(process.env.USERPROFILE || process.env.HOME || '').replace(/\\/g, '/').toLowerCase()}/.claude`,
-  // + projetos irmãos que este projeto LÊ (paths absolutos, lowercase).
+  // + projetos irmãos que este projeto LÊ: `leitura` em areas.local.json.
   // Escrita neles NUNCA é auto-aprovada — o padrão é escrever lá UM artefato
   // (spec/plano) e executar numa sessão de lá.
+  ...(LOCAL.leitura || []),
 ];
 
 // ── whitelists de comando nativo, por escopo ─────────────────────────────────
@@ -81,8 +129,10 @@ export const HEADS_LEITURA = new Set([
 export const HEADS_PROJETO = new Set([
   ...HEADS_LEITURA,
   'npm', 'pnpm', 'npx', 'tsx', 'tsc', 'vitest', 'vite', 'eslint', 'prettier',
-  // + bins reais do projeto (medir-comandos.mjs lista os que aparecem de fato)
   'mkdir', 'cp', 'touch', 'tee', 'mv', 'rm', 'cmd', 'pkill', 'unset',
+  // + bins reais do projeto: `headsProjeto` em areas.local.json
+  // (medir-comandos.mjs lista os que aparecem de fato)
+  ...(LOCAL.headsProjeto || []),
 ]);
 
 /** Heads que escrevem: todo alvo precisa cair numa área de escrita. */
@@ -183,17 +233,41 @@ const GIT_ESCRITA = /^(commit|add|push|pull|fetch|merge|rebase|reset|checkout|re
  *
  * `checkout`/`switch`/`restore` ficam sempre aqui: além de descartarem working
  * tree, tirar o checkout raiz da branch base é o que quebra sessões paralelas.
+ * (stash/branch/tag/worktree destrutivos NÃO ficam aqui: valem em todo escopo,
+ * ver `gitEstadoCompartilhado`.)
  */
 function gitDestrutivoNoRoot(sub, args) {
   const tem = (re) => args.some((a) => re.test(a));
   switch (sub) {
     case 'reset': return tem(/^--hard$/);
     case 'clean': return tem(/^-[a-z]*[fdx]/);
-    case 'stash': return args.some((a) => /^(drop|clear)$/.test(a));
     case 'checkout': case 'switch': case 'restore': return true;
-    // `-d` só apaga branch já mergeada e fecha o cleanup de worktree
-    // (worktree.md §9); quem destrói trabalho é `-D`/`--force`.
-    case 'branch': return tem(/^(-D|-M|--force)$/);
+    default: return false;
+  }
+}
+
+/**
+ * Destrutivo em estado COMPARTILHADO — recusado em TODOS os escopos, worktree e
+ * scratch inclusos. A worktree é descartável só no que é dela: working tree e
+ * index (por isso `reset --hard`, `clean`, `checkout -- .` e `restore` seguem
+ * livres lá). Mas stash, branches, tags e o registro de worktrees pertencem ao
+ * repositório inteiro: `stash drop` na worktree apaga o stash que outra sessão
+ * guardou, `branch -D` apaga a branch de outra worktree, `worktree remove`
+ * derruba a pasta de quem está trabalhando nela. Nenhum `rm` lá dentro desfaz isso.
+ *
+ * `branch -d` (só apaga branch já mergeada) continua livre — fecha o cleanup
+ * (worktree.md §9); quem destrói trabalho é `-D`/`-M`/`--force`. Recebe só os
+ * args DEPOIS do subcomando (`git -C x branch -D y` não confunde o `-C`).
+ */
+function gitEstadoCompartilhado(sub, resto) {
+  const tem = (re) => resto.some((a) => re.test(a));
+  switch (sub) {
+    case 'stash': return tem(/^(drop|clear|pop|branch)$/); // `stash branch` também descarta o stash
+    // cluster curto com D/M/C/f (`-D`, `-M`, `-C`, `-fd`) ou --force; `-d` sozinho não
+    case 'branch': return tem(/^-[a-zA-Z]*[DMCf][a-zA-Z]*$/) || tem(/^--force$/);
+    case 'worktree': return tem(/^(remove|prune|move)$/);
+    case 'tag': return tem(/^-[a-zA-Z]*[df][a-zA-Z]*$/) || tem(/^--(delete|force)$/);
+    case 'update-ref': return tem(/^-d$/);
     default: return false;
   }
 }
@@ -245,13 +319,16 @@ export const CHECAGENS_DE_ARGUMENTO = {
     // consomem o token seguinte.
     const COM_VALOR = /^(-C|-c|--git-dir|--work-tree|--namespace|--exec-path)$/;
     let sub = '';
+    let resto = [];
     for (let i = 0; i < args.length; i++) {
       if (COM_VALOR.test(args[i])) { i++; continue; }
       if (/^-/.test(args[i])) continue;
       sub = args[i].toLowerCase();
+      resto = args.slice(i + 1);
       break;
     }
     if (GIT_PERIGOSO.test(sub)) return false;
+    if (gitEstadoCompartilhado(sub, resto)) return false; // todo escopo
     const leitura = gitSomenteLeitura(sub, args);
     if (ctx.escopo === 'leitura' && GIT_ESCRITA.test(sub) && !leitura) return false;
     if (ctx.escopo === 'projeto' && !leitura && gitDestrutivoNoRoot(sub, args)) return false;

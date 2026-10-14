@@ -14,20 +14,26 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { LEITURA, SCRATCH as AREAS_SCRATCH, PROJETO, canon, dentroDeAlguma } from '../lib/areas.mjs';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const HOOK = path.join(aqui, '..', 'auto-approve-project-bash.mjs');
 
-// AJUSTE NA INSTALAÇÃO: IRMAO/SCRATCH/HOME precisam bater com as áreas
-// declaradas no hook. Os casos que os usam são os que provam a política de
-// projetos irmãos (leitura sim, escrita não) e de destino de escrita.
+// Nada a ajustar: IRMAO/SCRATCH/FORA saem das áreas reais de lib/areas.mjs, que já
+// lê o areas.local.json. Os casos de projeto irmão (leitura sim, escrita não)
+// só rodam se LEITURA tiver um irmão declarado; senão são pulados, com aviso.
 const R = process.cwd().replace(/\\/g, '/');   // root do projeto, forward slashes
 const RW = process.cwd();                       // como vem no payload (backslashes)
 const WT = `${R}/.worktrees/exemplo`;
-const IRMAO = '<PATH_DE_UM_PROJETO_IRMAO>';
-const SCRATCH = '/tmp';
-const FORA = '<PATH_FORA_DE_QUALQUER_AREA>';
 const HOME = (process.env.USERPROFILE || process.env.HOME || '').replace(/\\/g, '/');
+const IRMAO = LEITURA.find((p) => p !== canon(`${HOME}/.claude`));   // primeiro irmão declarado
+const SCRATCH = AREAS_SCRATCH[0];
+const FORA = ['c:/okpb-fora-de-area', '/okpb-fora-de-area', 'z:/okpb-fora-de-area']
+  .find((p) => !dentroDeAlguma([PROJETO, ...AREAS_SCRATCH, ...LEITURA], canon(p)));
+if (!FORA) { console.error('sem candidato a FORA: todos caem numa área'); process.exit(1); }
+
+let pulados = 0;
+const soComIrmao = (lista) => { if (IRMAO) return lista; pulados += lista.length; return []; };
 
 const casos = [
   // ── sem cd, cwd = projeto: o caso MAIS COMUM, que rule nenhuma cobria ──────
@@ -114,6 +120,43 @@ const casos = [
   ['git worktree add .worktrees/nova -b feat/nova', R, true],
   ['git log --oneline -5', R, true],
 
+  // ── D1: git de estado COMPARTILHADO nunca é auto-aprovado, em escopo nenhum ─
+  // (stash, branches, tags e registro de worktrees são do repositório inteiro)
+  [`cd "${WT}" && git stash drop`, R, false],
+  [`cd "${WT}" && git stash pop`, R, false],
+  [`cd "${WT}" && git stash clear`, R, false],
+  [`cd "${WT}" && git stash branch nova`, R, false],
+  [`cd "${WT}" && git branch -D x`, R, false],
+  [`cd "${WT}" && git branch -M novo`, R, false],
+  [`cd "${WT}" && git branch -d x --force`, R, false],            // -d + --force = -D
+  [`cd "${WT}" && git branch -df x`, R, false],
+  [`cd "${WT}" && git -C ../x branch -D y`, R, false],            // -C não esconde
+  [`cd "${WT}" && git worktree remove ../x`, R, false],
+  [`cd "${WT}" && git worktree prune`, R, false],
+  [`cd "${WT}" && git worktree move ../x ../y`, R, false],
+  [`cd "${WT}" && git tag -d v1`, R, false],
+  [`cd "${WT}" && git tag --delete v1`, R, false],
+  [`cd "${WT}" && git update-ref -d refs/heads/x`, R, false],
+  ['git stash pop', R, false],                                    // root: mesma coisa
+  ['git tag -d v1', R, false],
+  ['git worktree prune', R, false],
+  [`cd ${SCRATCH} && git stash drop`, R, false],                  // scratch também
+  [`cd ${SCRATCH} && git branch -D x`, R, false],
+  ['git stash drop', WT, false],                                  // cwd = worktree, sem cd
+  // …e o que continua livre na worktree, por só atingir a própria worktree:
+  [`cd "${WT}" && git reset --hard`, R, true],
+  [`cd "${WT}" && git checkout -- .`, R, true],
+  [`cd "${WT}" && git clean -fd`, R, true],
+  [`cd "${WT}" && git restore .`, R, true],
+  [`cd "${WT}" && git stash`, R, true],                           // guardar não apaga nada
+  [`cd "${WT}" && git stash list`, R, true],
+  [`cd "${WT}" && git branch -d x`, R, true],
+  [`cd "${WT}" && git branch --list`, R, true],
+  [`cd "${WT}" && git worktree list`, R, true],
+  [`cd "${WT}" && git worktree add ../novo -b feat/novo`, R, true],
+  [`cd "${WT}" && git tag -l`, R, true],
+  [`cd "${WT}" && git tag v2`, R, true],
+
   // ── scratch: descartável, escrita livre ───────────────────────────────────
   [`cat > ${SCRATCH}/x.py <<'EOF'\nprint(1)\nEOF`, R, true],
   [`python ${SCRATCH}/x.py`, R, true],
@@ -121,6 +164,7 @@ const casos = [
   [`cd ${SCRATCH} && ls`, R, true],
 
   // ── projeto irmão: leitura livre, escrita nunca ───────────────────────────
+  ...soComIrmao([
   [`cd "${IRMAO}" && git status`, R, true],
   [`cd "${IRMAO}" && ls docs/insights`, R, true],
   [`cd "${IRMAO}" && grep -rn "hook" docs/`, R, true],
@@ -129,6 +173,7 @@ const casos = [
   [`cd "${IRMAO}" && echo x > docs/nota.md`, R, false],
   [`cd "${IRMAO}" && rm -rf dist`, R, false],
   [`cd "${IRMAO}" && npm test`, R, false],                       // toolchain não, só leitura
+  ]),
 
   // ── regressões: falsos negativos achados no replay do histórico ──────────
   ['node --test packages/a/test/x.js > /tmp/merged.out 2>&1', R, true],   // /tmp POSIX
@@ -143,14 +188,19 @@ const casos = [
   ['git stash clear', R, false],
   ['git reset HEAD~1', R, true],                                          // mixed é recuperável
   ['git branch -D feature/velha', R, false],
-  ['git worktree remove --force .worktrees/x && git worktree prune && git branch -d feature/x', R, true],
+  ['git branch -d feature/x', R, true],                                   // -d só apaga branch mergeada: cleanup livre
+  ['git worktree remove --force .worktrees/x && git worktree prune && git branch -d feature/x', R, false],  // D1: remove/prune pedem em todo escopo
+  ...soComIrmao([
   [`cd ${IRMAO} && git commit -m "x"`, R, false],               // escrita em irmão
   [`cd ${IRMAO} && git worktree add .worktrees/y -b feat/y`, R, false],
+  ]),
   ['git branch --show-current', R, true],
   ["grep -rn 'crase ` literal' packages/", R, true],                      // $()/crase em aspas simples
+  ...soComIrmao([
   [`cd ${IRMAO} && git branch --list feat/x`, R, true],           // leitura em irmão
   [`cd ${IRMAO} && git branch -D feat/x`, R, false],
   [`cd ${IRMAO} && ls docs/`, R, true],
+  ]),
   [`cd ${HOME}/.claude/plugins && ls`, R, true],
   [`cd ${HOME}/.claude && echo x > settings.json`, R, false],     // leitura não escreve
 
@@ -175,6 +225,7 @@ for (const [cmd, cwd, esperado] of casos) {
 }
 
 console.log(`${ok}/${casos.length} casos ok`);
+if (!IRMAO) console.log(`${pulados} casos de projeto irmão pulados: LEITURA não tem nenhum irmão (declare em .claude/hooks/areas.local.json para exercitá-los)`);
 if (falhas.length) {
   console.log('\nFALHAS:');
   for (const f of falhas) {
