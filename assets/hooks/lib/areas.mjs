@@ -76,6 +76,9 @@ export const PLUGINS = `${(process.env.USERPROFILE || process.env.HOME || '').re
 const HEADS_RECUSADOS = new Set([
   'bash', 'sh', 'zsh', 'dash', 'fish', 'ksh', 'csh', 'tcsh', 'powershell', 'pwsh', 'wsl', 'busybox',
   'env', 'xargs', 'sudo', 'doas', 'su', 'eval', 'exec', 'nohup', 'time', 'start', 'command', 'builtin',
+  'nice', 'stdbuf', 'setsid', 'parallel', 'watch',
+  // interpretadores que executam código arbitrário por argumento (`perl -e`, `ruby -e`, `mshta`…)
+  'perl', 'ruby', 'php', 'lua', 'deno', 'bun', 'cscript', 'wscript', 'mshta', 'osascript',
 ]);
 export const AREAS_LOCAL = { estado: 'ausente', motivo: '', arquivo: '', descartados: [] };
 const LOCAL = (() => {

@@ -134,7 +134,7 @@ canon (Modo 3) ou para os complementos, e o bloco é regenerado com `apply`.
    - `atualizavel` → aplica sem perguntar.
    - `editado` (o projeto mexeu num item materializado) → mostre o diff contra o canon; o dono escolhe `--so` (volta ao canon) ou `--manter` (vira customização). Se a edição parece genérica, ofereça o Modo 3.
    - `customizado-canon-mudou` → o canon mudou num item que o projeto mantém local: mostre o que mudou no canon; o dono reavalia (`--so` ou `--manter` de novo para registrar que viu). Hook customizado só em áreas/whitelist (`SCRATCH`, `LEITURA`, `HEADS_PROJETO`): mova os valores para `.claude/hooks/areas.local.json` e volte ao canon com `--so`.
-   - `_index.md` semeado por versão anterior: semente nunca é reescrita — se ele tem links `docs/ok-playbook/…` a partir da raiz, corrija-os para relativos ao arquivo (`../ok-playbook/…`).
+   - `_index.md` semeado por versão anterior: semente nunca é reescrita — se ele tem links `docs/ok-playbook/…` a partir da raiz, corrija-os para caminho relativo ao próprio arquivo.
    - `do-projeto` que é cópia do canon (ex.: `scripts/worktree.mjs` copiado no passo 5): o canon pode ter corrigido algo nele — compare com `<SKILL_DIR>/assets/scripts/` e porte a correção, preservando a adaptação do projeto.
    - `orfao` → o canon deixou de ter o item: proponha remover o arquivo (com o sim do dono) **e** a entrada do item em `ok-playbook.json` (o script não tem flag para isso; é a única edição manual permitida do manifesto fora do Modo 1).
    - `customizado-ausente` → o arquivo que o projeto mantinha local sumiu: restaure do canon com `--so <id>` ou desista da customização com `--sem <id>`.
