@@ -316,8 +316,9 @@ Todas as chaves são arrays de strings, opcionais, e **somam** aos defaults. Pat
 | Ler um projeto irmão novo | `areas.local.json` | `leitura` — path absoluto. **Nunca dá escrita** |
 | Marcar uma área descartável (escrita e `rm` livres) | `areas.local.json` | `scratch` |
 | Restringir um comando por argumento (espelhar rule limitada) | `lib/areas.mjs` | `CHECAGENS_DE_ARGUMENTO` — devolver `false` defere (mudança de canon) |
-| Liberar/segurar um cmdlet PowerShell | `auto-approve-project-powershell.mjs` | `INERTES`, `ESCRITA`, `REMOCAO`; verbo de leitura já passa por construção |
-| Um parâmetro PS está comendo o path seguinte | `auto-approve-project-powershell.mjs` | `SWITCHES` — parâmetro que não leva valor |
+| Liberar/segurar um cmdlet PowerShell | `auto-approve-project-powershell.mjs` | `INERTES`, `ESCRITA`, `REMOCAO`; verbo de leitura já passa por construção (mudança de canon — proponha ao playbook; editar no projeto vira `customizado`) |
+| Um parâmetro PS está comendo o path seguinte | `auto-approve-project-powershell.mjs` | `SWITCHES` — parâmetro que não leva valor (mudança de canon) |
+| Fazer um comando sempre pedir confirmação, mesmo com rule larga no allow | `.claude/settings.json` | `permissions.ask` — vem antes do `allow` |
 | Proibir algo de vez | `.claude/settings.json` | `permissions.deny` — não adianta tirar do whitelist |
 
 **Depois de qualquer edição, rode `hook-test.mjs` e `hook-test-powershell.mjs`.** Os casos negativos são o que impede o hook de virar um `allow *` acidental; é barato e pega erro de dedo em regex.

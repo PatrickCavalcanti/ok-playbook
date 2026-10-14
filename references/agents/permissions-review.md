@@ -115,7 +115,7 @@ Insights são fila de discussão; não tomar ação automática.
 
 **Modifica:**
 - `.claude/settings.json` (ou `.claude/settings.local.json`) do projeto consumidor — apenas append/merge na lista `permissions.allow`.
-- `.claude/hooks/auto-approve-project-bash.mjs` — **apenas os whitelists** (Sets de basenames) e, quando for o caso, a lista `LEITURA` de projetos irmãos. Adicionar só basenames de baixo risco (build/test/lint/migration: `vite`, `vitest`, `drizzle-kit`, etc.). Mesmo diff-antes-de-aplicar. NUNCA adicionar comandos de alto risco (`curl` sem restrição de host, `npm install -g`, `git push`, `git reset --hard`) — ver `worktree.md §6.4`. Depois de qualquer mudança, **rodar `hook-test.mjs`**: os casos negativos são o que impede o hook de virar um `allow *`.
+- `.claude/hooks/areas.local.json` — **nunca os hooks em si** (eles ficam iguais ao canon): `headsProjeto` (basenames) e, quando for o caso, `leitura` (projetos irmãos). Adicionar só basenames de baixo risco (build/test/lint/migration: `vite`, `vitest`, `drizzle-kit`, etc.). Mesmo diff-antes-de-aplicar. NUNCA adicionar comandos de alto risco (`curl` sem restrição de host, `npm install -g`, `git push`, `git reset --hard`) — ver `worktree.md §6.4`. Depois de qualquer mudança, **rodar `hook-test.mjs`**: os casos negativos são o que impede o hook de virar um `allow *`.
 - `<backlog-root>/permissions/` — cria registro de feedback quando houver o que registrar.
 - `<insights-root>/` — cria insight quando detectar padrão recorrente cross-sessão.
 

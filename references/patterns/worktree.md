@@ -271,7 +271,7 @@ Operações que **não** começam com `cd <worktree>` ou não fazem chain, conti
 
 | Categoria | Por que rule e não hook |
 |---|---|
-| `git worktree add/list/remove/prune` | Não tem `cd` antes — comando direto. O hook, porém, nunca aprova `remove`/`prune`/`move`: se a rule `Bash(git worktree *)` existe, é ela que os autoriza; para segurar, restrinja-a a `add`/`list` |
+| `git worktree add/list/remove/prune` | Não tem `cd` antes — comando direto. O hook, porém, nunca aprova `remove`/`prune`/`move`, e o snippet os põe em `permissions.ask` (avaliado antes do `allow`), então mesmo com `Bash(git worktree *)` eles pedem confirmação. O `ask` casa pelo prefixo: `git -C <p> worktree remove` escapa dele — para fechar, use o script do projeto |
 | `git -C <path>` | Usa `-C` em vez de `cd && git` — fora do padrão do hook |
 | `rm -rf .worktrees/*` (cleanup) | Não tem `cd` antes |
 | `mklink` / `New-Item` (junction setup) | Não tem `cd` antes |
