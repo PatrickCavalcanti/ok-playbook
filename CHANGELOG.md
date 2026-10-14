@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 — 2026-10-14
+
+**Correções vistas nas primeiras migrações para a skill.**
+
+- **Git de estado compartilhado sempre pergunta.** `stash drop|clear|pop`, `branch -D|-M|-f`, `worktree remove|prune|move`, `tag -d`, `update-ref -d` não são mais auto-aprovados pelo hook em escopo nenhum (antes, na worktree, eram) e entram em `permissions.ask` no snippet, para que `Bash(git *)` não os libere por rule. `reset --hard`/`clean`/`checkout -- .` na worktree continuam livres (só atingem a própria worktree).
+- **`.claude/hooks/areas.local.json`.** Áreas do projeto (`scratch`, `leitura`) e bins próprios (`headsProjeto`) saem do `areas.mjs`, que volta a ser idêntico ao canon em todo projeto — atualizações chegam sem `customizado`. JSON ausente ou inválido = defaults (aprova menos, nunca mais).
+- **Hook-tests sem placeholder:** IRMAO/SCRATCH/FORA vêm das áreas reais; sem projeto irmão, os casos dele são pulados com aviso.
+- **`apply` limpa o legado 0.x, uma vez por projeto:** tira `Bash(rm *)`/`Bash(mv *)` do `allow` e troca o comando do hook antigo (`auto-approve-worktree-bash.js`, `auto-approve-project-bash.js`) pelo canônico — sem duplicar, preservando hooks próprios do mesmo matcher, e sem trocar se o projeto excluiu o hook canônico. O que o dono re-adicionar não é removido de novo. Relato em linhas `settings	…`.
+- **Links markdown relativos ao arquivo:** `](<x-root>…)` nos itens materializados vira caminho relativo ao destino (skills, patterns, templates, `_index.md`); prosa e código continuam com o caminho a partir da raiz.
+- **`worktree.mjs close`** apaga a pasta que sobra depois do `git worktree remove` (caminho > 260 no Windows) com um removedor próprio que nunca desce em link; arquivo preso → `FALTA:` dizendo qual.
+- **`SKILL.md`:** áreas em `areas.local.json`; passo de preencher o `_index.md` semeado; tabela de verbos de processo nos complementos do `CLAUDE.md`; `--ignore-workspace` para projeto dentro de workspace pnpm de outro repositório; portar correções do canon para cópias `do-projeto` do `worktree.mjs`.
+
 ## 1.3.1 — 2026-10-14
 
 - `README.md`: no topo, **"Quer entender antes de instalar?"** (prompt para o agente ler o repositório e explicar o efeito no projeto, sem instalar) e **Instalação** com prompt pronto, passos que o agente segue (clone direto na pasta de skills, link para o Codex, conferência, configuração) e como atualizar.
