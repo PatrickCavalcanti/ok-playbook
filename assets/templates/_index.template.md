@@ -116,7 +116,7 @@ docs/                                   # `paths.docs` (default `docs/`)
 └── insights/                           # `paths.insights`
     ├── _template.md
     ├── YYYY-MM-DD-<tema>.md
-    └── upstream-proposals/             # (se modo `request`)
+    └── upstream-proposals/             # propostas ao playbook (issue/PR/commit)
 ```
 
 ### Ciclo de vida de specs e planos

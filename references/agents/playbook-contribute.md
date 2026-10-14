@@ -1,17 +1,19 @@
 ---
-description: "Materializa uma proposta de mudança no ok-playbook a partir de insight/feedback local. Opera em três modos (direct/branch-pr/request) conforme o campo `contribuicao` de ok-playbook.json."
+description: "Materializa uma proposta de mudança no ok-playbook a partir de insight/feedback local — como issue ou pull request no repositório do playbook, ou commit direto quando quem propõe é o mantenedor. Modo conforme o campo `contribuicao` de ok-playbook.json (direct/branch-pr/request)."
 when_to_use: "quando o usuário pede 'propor mudança no playbook' ou 'sobe isso pro playbook', ou quando docs-review identifica insight que parece genérico e oferece promover upstream"
 ---
 
 # Agente — Playbook Contribute
 
-Propõe mudança upstream no `ok-playbook` a partir de um insight, feedback ou patch local. Opera em **três modos** conforme o campo `contribuicao` de `ok-playbook.json` (default `direct`):
+Propõe mudança upstream no `ok-playbook` a partir de um insight, feedback ou patch local. Contribuição de fora chega ao playbook de duas formas: **issue** (a proposta descrita, para o mantenedor aplicar) ou **pull request** (a mudança pronta, para o mantenedor revisar). O mantenedor commita direto. O campo `contribuicao` de `ok-playbook.json` escolhe o modo:
 
-| Modo | Quem usa | O que faz |
+| Modo | Quem usa | O que entrega |
 |---|---|---|
 | `direct` | Mantenedor do playbook: o diretório da skill é um clone git com push na main | Commit + push direto na main do clone da skill |
-| `branch-pr` | Clone git com acesso a branch mas sem push na main | Cria branch, commit, push, abre MR/PR com insight + diff |
-| `request` | O diretório da skill não é um clone git com push (ou o dono prefere não escrever nele) | Gera artefato em `<insights-root>/upstream-proposals/` pra mantenedor aplicar manualmente |
+| `branch-pr` | Quem quer mandar a mudança pronta | **Pull request** no repositório do playbook (branch própria ou fork) |
+| `request` | Quem quer propor sem editar o playbook — o caminho padrão de quem só instalou a skill | **Issue** no repositório do playbook com a proposta completa |
+
+**O protocolo diz o que entregar, não com que ferramenta.** Cada ambiente chega ao GitHub (ou a outra forge) de um jeito: `gh` CLI, integração/MCP do GitHub, outra CLI, ou nenhum. Use o caminho que o ambiente tiver; sem nenhum, entregue o texto pronto e o endereço para o usuário publicar.
 
 **Referência canônica:** [`<playbook-root>patterns/feedback-loop.md §9.2`](<playbook-root>patterns/feedback-loop.md) (insights como fila pra fora).
 
@@ -21,8 +23,9 @@ Propõe mudança upstream no `ok-playbook` a partir de um insight, feedback ou p
 
 ## Pré-condições
 
-- [ ] **Fonte do playbook localizada:** é o diretório da skill `ok-playbook` instalada (ex.: `~/.claude/skills/ok-playbook`) — siga a junction/link até o clone git real e use esse caminho (`<fonte>`) nos passos abaixo. Modo `direct` só se `<fonte>` é um clone git com push; senão `request` (proposta em `<insights-root>/upstream-proposals/` a partir de `<playbook-root>templates/upstream-proposal.md`).
-- [ ] `ok-playbook.json` (raiz do projeto) tem o campo `contribuicao` (`direct` / `branch-pr` / `request`; ausente = `direct`, rebaixado para `request` se `<fonte>` não for clone git com push). Se o valor for inválido, **perguntar uma vez ao usuário** e gravar o campo antes de prosseguir.
+- [ ] **Fonte do playbook localizada:** é o diretório da skill `ok-playbook` instalada (ex.: `~/.claude/skills/ok-playbook`) — siga a junction/link até o diretório real (`<fonte>`).
+- [ ] **Repositório do playbook identificado** (`<repo>`): o remote `upstream` do clone, se existir (clone de um fork); senão o `origin`; sem clone git, o endereço da seção "Contribuindo" do `README.md` da skill.
+- [ ] `ok-playbook.json` (raiz do projeto) tem o campo `contribuicao` (`direct` / `branch-pr` / `request`; ausente = `direct`, rebaixado para `request` se `<fonte>` não for clone git com push na main). Se o valor for inválido, **perguntar uma vez ao usuário** e gravar o campo antes de prosseguir.
 - [ ] Há **fonte clara da proposta**: um arquivo de insight, um item de feedback, ou descrição explícita do usuário. Sem fonte, abortar: "Preciso de um insight ou feedback pra basear a proposta — qual arquivo motiva esta mudança?"
 
 ---
@@ -43,9 +46,10 @@ Antes de tocar em qualquer arquivo:
 
 1. Ler a fonte completa.
 2. Identificar **exatamente** o que muda no playbook: path(s) afetado(s) em `<fonte>`, tipo de mudança (novo pattern, edição de pattern, novo template, adição em `assets/settings-snippet.json`, etc.).
-3. Mostrar ao usuário um **plano resumido**:
-   > "Vou propor: [resumo da mudança]. Arquivos afetados: [lista]. Motivação: [link pro insight]. OK?"
-4. Aguardar OK antes de qualquer edição.
+3. **Tirar o que é do projeto.** O playbook é público e agnóstico: nome de projeto, caminho de máquina, nome de pessoa, ferramenta interna e dado de cliente não entram na proposta — generalizar a regra e citar o caso só como exemplo neutro.
+4. Mostrar ao usuário um **plano resumido**:
+   > "Vou propor: [resumo da mudança]. Arquivos afetados: [lista]. Motivação: [link pro insight]. Entrega: [commit direto / PR / issue] em `<repo>`. OK?"
+5. Aguardar OK antes de qualquer edição.
 
 ### 3. Roteamento por modo
 
@@ -73,55 +77,41 @@ Para mantenedor com push na main do clone.
 
 ---
 
-### 3b. Modo `branch-pr`
+### 3b. Modo `branch-pr` — pull request
 
-Para clone git com acesso a branch mas sem push na main.
+A mudança vai pronta, numa branch, para o mantenedor revisar.
 
-1. **Aplicar edições** em `<fonte>` (Edit/Write).
-2. **Mostrar diff** completo.
-3. **Confirmar com usuário.**
-4. **Criar branch no clone:**
-   ```
-   git -C <fonte> checkout -b proposal/<slug-curto>
-   git -C <fonte> add <paths>
-   git -C <fonte> commit -m "<tipo>: <descrição>
-
-   Motivação: <link ou resumo do insight>
-   "
-   git -C <fonte> push -u origin proposal/<slug-curto>
-   ```
-5. **Abrir PR/MR** via `gh pr create` (ou equivalente da forge). **Body do PR deve conter:**
+1. **Onde a branch mora:** no `<repo>` se o usuário tem push nele; senão num **fork** dele (criar o fork pelo caminho que o ambiente tiver — ex.: `gh repo fork`; ou usar um fork que o usuário já tenha).
+2. **Aplicar edições** numa branch `proposal/<slug-curto>` do clone, a partir da main atualizada.
+3. **Mostrar diff** completo e **confirmar com o usuário** — abrir PR publica a mudança.
+4. **Commit e push** da branch para o remote escolhido no passo 1.
+5. **Abrir o PR** contra a main do `<repo>` pelo caminho disponível (ex.: `gh pr create`, integração do GitHub). **Body do PR deve conter:**
    - Resumo da mudança (1-3 linhas).
-   - **Insight de origem completo** (corpo do arquivo `<insights-root>/...`) — embutido inline, não link, porque o mantenedor do playbook não tem acesso ao repo do projeto.
-   - Diff dos arquivos afetados (deixar o PR mostrar).
+   - **Insight de origem completo**, já sem o que é do projeto (passo 2.3) — embutido inline, não link: o mantenedor não tem acesso ao repo do projeto.
    - Como testar/validar (steps mínimos).
-   - Projeto consumidor de origem (nome).
-6. **Registrar PR** em `<insights-root>/upstream-proposals/YYYY-MM-DD-<slug>.md` a partir de [`<playbook-root>templates/upstream-proposal.md`](<playbook-root>templates/upstream-proposal.md) com:
-   - `mode: branch-pr`
-   - `status: submitted`
-   - `pr_url: <url>`
-   - Cópia do diff e da motivação.
-7. **Voltar o clone para a main** (`git -C <fonte> checkout main`) — a skill instalada não pode ficar numa branch de proposta. Avisar usuário:
-   > "PR aberto: <url>. Quando for merged na main do playbook, atualize o clone (`git -C <fonte> pull`) e rode a skill `ok-playbook` no modo atualizar em cada projeto."
+   - Tipo de projeto de origem (stack, tamanho) — não o nome, se o usuário não quiser expor.
+6. **Sem caminho para push ou PR** no ambiente: gerar o patch (`git -C <fonte> format-patch main --stdout`) e o texto do PR no artefato de rastro (passo 7) e orientar o usuário a abrir o PR por conta própria. Não inventar credencial nem token.
+7. **Registrar** em `<insights-root>/upstream-proposals/YYYY-MM-DD-<slug>.md` a partir de [`<playbook-root>templates/upstream-proposal.md`](<playbook-root>templates/upstream-proposal.md): `mode: branch-pr`, `status: submitted` (ou `drafted`, se o usuário vai abrir), `pr_url`, cópia do diff e da motivação.
+8. **Voltar o clone para a main** (`git -C <fonte> checkout main`) — a skill instalada não pode ficar numa branch de proposta. Avisar usuário:
+   > "PR aberto: <url>. Quando for mergeado, atualize o clone (`git -C <fonte> pull`) e rode a skill `ok-playbook` no modo atualizar em cada projeto."
 
 ---
 
-### 3c. Modo `request`
+### 3c. Modo `request` — issue
 
-Para quando `<fonte>` não é um clone git com push.
+A proposta vai descrita, para o mantenedor decidir e aplicar.
 
 1. **NÃO tocar em `<fonte>`** — read-only neste modo.
-2. **Gerar artefato** em `<insights-root>/upstream-proposals/YYYY-MM-DD-<slug>.md` a partir de [`<playbook-root>templates/upstream-proposal.md`](<playbook-root>templates/upstream-proposal.md) contendo:
-   - `mode: request`
-   - `status: drafted`
-   - **Diff completo** dos arquivos a alterar (gerado mentalmente — mostrar o conteúdo "antes" e "depois" de cada arquivo).
-   - **Steps executáveis pelo mantenedor**: comandos copy-paste-ready (criar/editar arquivo X, commitar com mensagem Y, push).
-   - **Insight de origem completo** embutido.
-   - **Como o consumidor sabe que foi aplicado**: instrução pra rodar a skill `ok-playbook` no modo atualizar após receber confirmação.
-3. **Commitar o artefato no projeto** (não em `<fonte>`): `git add <artefato> && git commit -m "docs: proposta upstream pro ok-playbook — <slug>"`.
-4. **Instruir o usuário** sobre como enviar ao mantenedor — sem assumir canal (email, Slack, issue):
-   > "Artefato pronto em `<path>`. Envie ao mantenedor do ok-playbook pelo canal combinado (não tenho como assumir qual). Quando ele responder que aplicou, atualize o clone da skill e rode a skill `ok-playbook` no modo atualizar pra adotar."
-5. **Atualizar status do artefato** conforme o usuário reporta: `drafted` → `sent` → `accepted` / `rejected` / `merged`. Esses updates são edições manuais subsequentes (não automatizadas).
+2. **Escrever a proposta** em `<insights-root>/upstream-proposals/YYYY-MM-DD-<slug>.md` a partir de [`<playbook-root>templates/upstream-proposal.md`](<playbook-root>templates/upstream-proposal.md), com `mode: request`, `status: drafted` e:
+   - **Título** curto da issue.
+   - **Mudança proposta**: diff dos arquivos a alterar (antes/depois de cada trecho) ou, se a mudança é de regra e não de texto exato, a regra nova e onde ela entra.
+   - **Insight de origem completo**, já sem o que é do projeto (passo 2.3).
+   - **Como validar**.
+3. **Mostrar a issue ao usuário** (título + corpo) e pedir o sim para publicar — a issue é pública.
+4. **Publicar pelo caminho que o ambiente tiver** — ex.: `gh issue create -R <repo> --title "<título>" --body-file <artefato>` ou a integração do GitHub. Gravar `issue_url` e `status: submitted` no artefato.
+5. **Sem caminho no ambiente:** entregar ao usuário o endereço de nova issue (`<repo>/issues/new`) e o título + corpo prontos para colar; o artefato fica `drafted` até ele confirmar que publicou (`submitted`).
+6. **Commitar o artefato no projeto** (não em `<fonte>`): `git add <artefato> && git commit -m "docs: proposta upstream pro ok-playbook — <slug>"`.
+7. **Atualizar status do artefato** conforme o usuário reporta: `submitted` → `accepted` / `rejected` / `merged`. Esses updates são edições manuais subsequentes (não automatizadas).
 
 ---
 
@@ -131,8 +121,8 @@ Após qualquer modo, resumir:
 
 > "Proposta processada em modo `<modo>`.
 > - Mudança: <resumo>.
-> - Status: <commit pushed / PR aberto / artefato gerado>.
-> - Próximo passo: <atualizar projetos / aguardar review do PR / enviar ao mantenedor>.
+> - Status: <commit pushed / PR aberto / issue aberta / texto pronto para o usuário publicar>.
+> - Próximo passo: <atualizar projetos / aguardar review / publicar a issue ou PR>.
 > - Rastro: <link/path>."
 
 ---
@@ -148,10 +138,11 @@ Após qualquer modo, resumir:
 - `ok-playbook.json` — exceto pra preencher o campo `contribuicao` se estiver inválido.
 
 **Nunca:**
-- Faz `git push` no repositório do projeto — só no clone do playbook, e só nos modos `direct`/`branch-pr`.
+- Faz `git push` no repositório do projeto — só no clone do playbook (ou no fork dele), e só nos modos `direct`/`branch-pr`.
+- Publica issue ou PR sem o sim do usuário ao texto final.
 - Pula a confirmação do usuário antes de aplicar diff em `<fonte>`.
 - Opera em modo diferente do registrado em `ok-playbook.json` sem perguntar e atualizar o campo.
-- Inventa o canal de envio em modo `request` — sempre pergunta/orienta, nunca tenta enviar.
+- Inventa credencial, token ou canal — sem caminho no ambiente, entrega o texto pronto e o endereço.
 
 ---
 
@@ -160,5 +151,6 @@ Após qualquer modo, resumir:
 - **Toda proposta upstream tem rastro local** em `<insights-root>/upstream-proposals/` — mesmo no modo `direct`. Permite auditoria de "o que esse projeto promoveu pro playbook ao longo do tempo".
 - **Insight de origem é obrigatório.** Sem insight ou feedback como motivação, agente recusa: a regra é "promoção manual baseada em sinal documentado", não "qualquer mudança que pareça útil".
 - **Diff antes de aplicar** em modos `direct` e `branch-pr`.
-- **PR body em `branch-pr` inclui o insight completo embutido** — mantenedor do playbook não acessa o repo consumidor.
+- **Issue e PR levam o insight completo embutido** — mantenedor do playbook não acessa o repo consumidor.
+- **Nada do projeto vai para fora** sem o usuário ver: nomes, caminhos e dados saem da proposta antes de mostrar.
 - **Modo `request` é read-only na fonte** — zero edição em `<fonte>`.

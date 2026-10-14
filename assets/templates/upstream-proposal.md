@@ -1,11 +1,12 @@
 ---
 date: YYYY-MM-DD
 mode: direct | branch-pr | request
-status: drafted | submitted | sent | accepted | rejected | merged | applied
+status: drafted | submitted | accepted | rejected | merged | applied
 source_insight: <path>            # ex: docs/insights/2026-05-25-permissions-mklink.md
 target_paths:                     # arquivos do playbook que esta proposta toca
   - <path no repositório do playbook>
 pr_url: null                      # preencher em branch-pr depois de abrir o PR
+issue_url: null                   # preencher em request depois de abrir a issue
 applied_sha: null                 # preencher em direct após push; em branch-pr/request após adoção
 consumer_project: <nome>          # nome do projeto que originou a proposta (importante p/ branch-pr e request)
 ---
@@ -22,7 +23,7 @@ consumer_project: <nome>          # nome do projeto que originou a proposta (imp
 
 ### Insight de origem (embutido)
 
-> Este bloco é **obrigatório em `mode: branch-pr` e `mode: request`** — o mantenedor do playbook não tem acesso ao repo consumidor.
+> Este bloco é **obrigatório em `mode: branch-pr` e `mode: request`** — o mantenedor do playbook não tem acesso ao repo consumidor. Tirar dele o que é do projeto (nomes, caminhos, dados) antes de publicar.
 
 ```
 [Conteúdo completo do arquivo source_insight, copy-paste, sem links externos.]
@@ -46,7 +47,7 @@ Para cada arquivo afetado:
 
 ## Steps de aplicação (modo `request`)
 
-> Seção obrigatória **em `mode: request`** — o mantenedor vai aplicar manualmente.
+> Seção obrigatória **em `mode: request`** — vai no corpo da issue; o mantenedor aplica manualmente.
 
 1. `cd <playbook-repo>`
 2. Editar `<path-1>` substituindo `<bloco-antigo>` por `<bloco-novo>` (ou aplicar o diff acima).
@@ -67,9 +68,8 @@ Para cada arquivo afetado:
 
 ## Notas de status
 
-- `drafted` — artefato criado pelo `playbook-contribute`; ainda não enviado/submetido.
-- `submitted` (apenas `branch-pr`) — PR aberto; aguardando review.
-- `sent` (apenas `request`) — artefato enviado ao mantenedor pelo canal combinado.
+- `drafted` — artefato criado pelo `playbook-contribute`; issue/PR ainda não publicado.
+- `submitted` — PR (`branch-pr`) ou issue (`request`) aberto; aguardando o mantenedor.
 - `accepted` / `rejected` — mantenedor respondeu mas ainda não mergeou (ou recusou).
 - `merged` — mudança incorporada ao playbook canônico.
 - `applied` — consumidor já rodou a skill `ok-playbook` (modo atualizar) pós-merge e adotou no projeto.

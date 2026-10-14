@@ -37,7 +37,7 @@ Linhas do `plan`/`apply` (`<classe>␉<id>␉<destino>`):
 1. Confirme a raiz do projeto (git root) e que a árvore está limpa (`git status --short`). Suja → pergunte ao dono se commita antes.
 2. Proponha os caminhos com os defaults abaixo, ajustados ao que já existe no projeto (procure pastas de docs, feedback, pendências). Pergunte só o que o projeto não responde.
    `docs` `docs/` · `arch` `docs/project-architecture/` · `agents` `docs/project-architecture/agents/` · `superpowers` `docs/superpowers/` · `backlog` `docs/agent-feedback/` · `drafts` `docs/_drafts/` · `insights` `docs/insights/` · `pendencias` `docs/pendencias/`
-3. Grave `ok-playbook.json` com `{ "paths": { … }, "contribuicao": "direct" }`. O script exige que o arquivo exista; chaves omitidas em `paths` recebem o default acima.
+3. Grave `ok-playbook.json` com `{ "paths": { … }, "contribuicao": "<modo>" }` — `direct` se o dono mantém o playbook (o clone da skill tem push na main); senão `request` (contribuições viram issue; `branch-pr` se ele prefere mandar PR). O script exige que o arquivo exista; chaves omitidas em `paths` recebem o default acima.
 4. Rode `plan`. Para cada linha:
    - `novo` / `atualizavel` — será escrito.
    - `conflito` (arquivo já existe, diferente do canon e sem registro) — mostre a diferença ao dono e decida: sobrescrever (`--so <id>`), manter a versão local (`--manter <id>`), ou não usar o item (`--sem <id>`). Em `regras:CLAUDE.md`/`regras:AGENTS.md` o arquivo existente do projeto nunca é conflito: o bloco é inserido no topo e o resto fica intocado (um bloco legado `ok-playbook:include` é substituído).

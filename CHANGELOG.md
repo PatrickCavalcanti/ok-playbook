@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 2026-10-14
+
+**Contribuição de fora chega como issue ou pull request.**
+
+- `playbook-contribute`: `request` abre **issue** no repositório do playbook e `branch-pr` abre **pull request** (branch própria ou fork); `direct` segue para o mantenedor. O protocolo diz o que entregar, não a ferramenta — o agente usa o caminho que o ambiente tiver (`gh`, integração do GitHub, outra CLI) e, sem nenhum, entrega o texto pronto e o endereço. Publicar exige o sim do usuário ao texto final; a proposta sai sem nomes, caminhos e dados do projeto. Repositório do playbook = remote `upstream`/`origin` do clone ou o README.
+- `upstream-proposal.md`: campo `issue_url`; status `sent` absorvido por `submitted`.
+- `SKILL.md` (Modo 1): `contribuicao` = `direct` só para quem mantém o playbook; senão `request` (ou `branch-pr`).
+- `README.md`: seção "Contribuindo".
+
 ## 1.1.1 — 2026-10-14
 
 - Política "com desk": **desk de workers** passa a ser definido como conceito (orquestrador que lista o elenco de workers de várias CLIs, lê a cota de cada CLI e dispara workers); o Nidavellir fica como exemplo, com os nomes de ferramenta dele entre parênteses. Exemplo de gate com nomes de worker genéricos. Arquivos: `subagent-dispatch.md` §4.3, `superpowers-workflow.md`, `dev-process.md` §3 item 10, `assets/rules.md`.

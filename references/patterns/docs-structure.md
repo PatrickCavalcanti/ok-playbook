@@ -76,7 +76,7 @@ Este doc serve a três usos:
     ├── insights/                          # `paths.insights` — insights & upstream
     │   ├── _template.md
     │   ├── YYYY-MM-DD-<tema>.md
-    │   └── upstream-proposals/            # (se contrib mode = `request`)
+    │   └── upstream-proposals/            # propostas ao playbook (issue/PR/commit)
     │
     └── ok-playbook/                       # cópia local do playbook (patterns, templates, protocolos)
 ```

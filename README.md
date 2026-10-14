@@ -58,6 +58,23 @@ tempo de uso.
 - `customizado` — o dono escolheu manter a versão local; `status` só avisa quando o canon muda na origem.
 - `do-projeto` — o projeto implementa (ex.: um `suite.mjs` próprio); a skill só confere o contrato (linha-sinal `OK`/`SUJO:`/`FALTA:`).
 
+## Contribuindo
+
+Repositório: <https://github.com/PatrickCavalcanti/ok-playbook>.
+
+Mudança que surge num projeto volta ao playbook pelo modo **Contribuir** da skill
+(protocolo em [`references/agents/playbook-contribute.md`](references/agents/playbook-contribute.md)),
+de uma de duas formas, conforme o campo `contribuicao` do `ok-playbook.json`:
+
+- **Issue** (`request`, o padrão de quem só instalou a skill) — a proposta
+  descrita, com o insight que a motivou, para o mantenedor avaliar e aplicar.
+- **Pull request** (`branch-pr`) — a mudança pronta, numa branch do seu fork.
+
+O agente abre a issue ou o PR pelo caminho que o seu ambiente tiver (`gh`,
+integração do GitHub, outra CLI); sem nenhum, ele entrega o texto pronto para
+você publicar. Nada é publicado sem o seu sim. Issues e PRs abertos à mão também
+são bem-vindos.
+
 ## Desenvolvimento
 
 Sem dependências. Testes:
