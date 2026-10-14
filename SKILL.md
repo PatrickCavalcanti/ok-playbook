@@ -46,6 +46,7 @@ Linhas do `plan`/`apply` (`<classe>␉<id>␉<destino>`):
 6. Hooks (`.claude/hooks/`): são materializados idênticos em qualquer checkout (a raiz do projeto é calculada em tempo de execução, via `CLAUDE_PROJECT_DIR`). Rode o primeiro `apply` para que `.claude/hooks/lib/areas.mjs` exista, ajuste `SCRATCH`/`LEITURA` nele ao que o dono usa e então rode `apply` de novo com `--manter hook:lib/areas.mjs` (registrar antes de o arquivo existir não o escreve). O `apply` mescla `permissions.allow/deny` e `hooks` (matchers `Bash` e `PowerShell`) em `.claude/settings.json` **uma vez**: o que o playbook já ofereceu fica registrado em `ok-playbook.json` (`settings`), então regra ou matcher que o dono remover depois não volta; se o projeto já tinha um matcher desses, o dele é mantido — confira se ele aponta para `.claude/hooks/…`. Se `settings.json` não for JSON válido (ex.: comentário) o `apply` para antes de escrever qualquer coisa (`FALTA: … não é JSON válido`): o dono corrige o arquivo ou você usa `--sem settings`, que desliga o merge. BOM, fim de linha e indentação do arquivo são preservados.
 7. Rode `apply` com as flags decididas. Repita até `OK` (`FALTA: N itens pedem decisão` lista o que falta decidir).
 8. Rode `status` → `OK sem drift`. Mostre ao dono o `git status --short` e proponha o commit (`chore: configura ok-playbook v<versão>`).
+9. **Feche com o que ele recebeu.** Em poucas linhas: o que foi instalado (pastas, agentes, hooks, permissões), o que ficou de fora ou como customização local, o que cada sessão passa a fazer (pergunta de perfil, sinal de atenção, feedback, pendências) e as pendências abertas no passo 5. Aponte `<docs>/ok-playbook/patterns/visao-geral.md` como a referência para ele e para quem entrar no projeto depois, e diga como atualizar (`git -C <SKILL_DIR> pull` + modo atualizar).
 
 ## Migração de um projeto 0.x (formato de pacote → skill)
 
@@ -88,7 +89,7 @@ um "revalida o playbook" caiu aqui. Faça um passo por commit.
   `.claude/skills/<nome>/SKILL.md`), com caminho relativo correto **a partir de cada
   arquivo**. Ao final, o grep do M1 só acha histórico.
 
-**M3. Configurar.** Siga o Modo 1 (passos 1–8) com os `paths` do inventário. O que
+**M3. Configurar.** Siga o Modo 1 (passos 1–9) com os `paths` do inventário. O que
 esperar no `plan` de um projeto migrado:
 - `regras:CLAUDE.md` → `atualizavel` (o bloco legado `include` é trocado pelo novo).
 - `skill:*` → `conflito` (os ponteiros antigos) → `--so`.
@@ -136,6 +137,8 @@ canon (Modo 3) ou para os complementos, e o bloco é regenerado com `apply`.
 ## Explicar (qualquer projeto)
 
 Pergunta sobre o que o ok-playbook faz ou impõe: responda a partir de `references/patterns/visao-geral.md` (ou da cópia materializada em `<docs>/ok-playbook/patterns/visao-geral.md`, se o projeto já está configurado — ela mostra os caminhos reais dele). Para o detalhe de uma regra, abra o pattern que a visão geral aponta. Não configure nada neste modo.
+
+Projeto ainda não configurado: cruze a visão geral com o que ele já tem — `CLAUDE.md`/`AGENTS.md` (o bloco entra no topo; o resto fica), pastas de docs com o mesmo papel (que viram os `paths`), `.claude/settings.json` e hooks existentes (merge, não substituição), scripts que já cumprem algum verbo de processo — e diga o que seria criado, o que seria alterado e o que daria para recusar. Só leitura: sem `ok-playbook.json`, sem `plan`, sem escrever nada.
 
 ## Modo 3 — Contribuir
 

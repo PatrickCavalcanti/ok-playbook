@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1 — 2026-10-14
+
+- `README.md`: no topo, **"Quer entender antes de instalar?"** (prompt para o agente ler o repositório e explicar o efeito no projeto, sem instalar) e **Instalação** com prompt pronto, passos que o agente segue (clone direto na pasta de skills, link para o Codex, conferência, configuração) e como atualizar.
+- `SKILL.md`: Modo 1 ganha o passo 9 (fecho: o que foi instalado, o que ficou de fora, o que cada sessão passa a fazer, onde ler depois); o modo Explicar cruza a visão geral com o que o projeto não configurado já tem, só lendo.
+
 ## 1.3.0 — 2026-10-14
 
 **Apresentação para quem chega.**

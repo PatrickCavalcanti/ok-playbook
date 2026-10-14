@@ -8,29 +8,65 @@ Depois de configurado, o projeto é **autocontido** — o agente lê tudo de den
 dele, sem precisar da skill instalada. A skill só entra para configurar,
 atualizar/auditar e contribuir de volta.
 
-**O que muda no seu projeto** — pastas, comportamento do agente em toda sessão,
-spec e plano, uso com desk de workers, o que ele não faz sem você e o que mexe
-na sua máquina: [`references/patterns/visao-geral.md`](references/patterns/visao-geral.md).
-A skill mostra esse resumo antes de configurar e permite deixar itens de fora.
+## Quer entender antes de instalar?
+
+Mande isto para o seu agente (Claude Code, Codex), aberto no seu projeto:
+
+```text
+Leia o repositório https://github.com/PatrickCavalcanti/ok-playbook — comece
+pelo README e por references/patterns/visao-geral.md — e me explique, olhando
+este projeto, o que mudaria se eu configurasse o ok-playbook aqui: arquivos que
+seriam criados ou alterados, o que muda no seu comportamento a cada sessão, o
+que mexe na minha máquina e o que eu poderia recusar. Não instale nem altere
+nada.
+```
+
+O resumo para leitura humana é a mesma
+[`visao-geral.md`](references/patterns/visao-geral.md): pastas, comportamento do
+agente em toda sessão, spec e plano, uso com desk de workers, o que ele não faz
+sem você e o que mexe na sua máquina.
 
 ## Instalação
 
-Clone o repositório e ligue-o ao diretório de skills do agente.
+Mande isto para o seu agente, aberto no projeto que você quer configurar:
 
-```bash
-git clone https://github.com/PatrickCavalcanti/ok-playbook.git
+```text
+Instale a skill ok-playbook a partir de
+https://github.com/PatrickCavalcanti/ok-playbook, seguindo a seção "Instalação"
+do README dele, e depois configure este projeto com ela.
 ```
 
-- **Claude Code:** link em `~/.claude/skills/ok-playbook`
-- **Codex:** link em `~/.codex/skills/ok-playbook` (ou `~/.agents/skills/ok-playbook`)
+A configuração começa mostrando o que vai mudar e perguntando o que deve ficar
+de fora; nada é escrito no projeto antes disso.
 
-No Windows, use junction (não exige privilégio de administrador):
+### Passos (o que o agente faz — ou você, à mão)
 
-```bat
-mklink /J "%USERPROFILE%\.claude\skills\ok-playbook" "C:\caminho\para\ok-playbook"
-```
+1. **Clonar direto na pasta de skills** — o diretório da skill precisa ser um
+   clone git (é por ele que a skill se atualiza e que as contribuições saem):
 
-Em Linux/macOS: `ln -s /caminho/para/ok-playbook ~/.claude/skills/ok-playbook`.
+   ```bash
+   git clone https://github.com/PatrickCavalcanti/ok-playbook.git ~/.claude/skills/ok-playbook
+   ```
+
+   No Windows: `git clone https://github.com/PatrickCavalcanti/ok-playbook.git "%USERPROFILE%\.claude\skills\ok-playbook"`.
+   Se o clone já existe em outro lugar, ligue-o em vez de clonar de novo — junction
+   no Windows (`mklink /J "%USERPROFILE%\.claude\skills\ok-playbook" "C:\caminho\para\ok-playbook"`,
+   sem privilégio de administrador), `ln -s` em Linux/macOS.
+2. **Codex** (se usar também): ligue o mesmo clone em `~/.codex/skills/ok-playbook`
+   (ou `~/.agents/skills/ok-playbook`) — um clone só para as duas CLIs.
+3. **Conferir**: `~/.claude/skills/ok-playbook/SKILL.md` existe e a skill
+   `ok-playbook` aparece na lista de skills do agente. Se não aparecer na sessão
+   atual, abra uma sessão nova.
+4. **Configurar o projeto**: peça "configura o ok-playbook neste projeto". A
+   skill segue o Modo 1 do [`SKILL.md`](SKILL.md): apresenta a visão geral,
+   pergunta o que fica de fora, propõe os caminhos, mostra o `plan`, aplica e
+   termina com um resumo do que foi instalado e a proposta de commit.
+
+### Atualizar
+
+`git -C ~/.claude/skills/ok-playbook pull` e, em cada projeto, peça "revalida o
+ok-playbook" (modo atualizar): a skill mostra o que mudou no canon, item por
+item, e pergunta antes de sobrescrever o que o projeto customizou.
 
 ## Uso
 
