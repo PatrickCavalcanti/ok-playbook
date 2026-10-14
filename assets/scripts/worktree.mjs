@@ -35,7 +35,13 @@
  * ⚠️ A REGRA QUE MAIS IMPORTA: junction PRIMEIRO, worktree depois. No Windows,
  * delete recursivo **segue o reparse point** e apaga o conteúdo do alvo. O
  * `close` aqui remove todo junction/symlink com `rmdir` (que remove só o link)
- * antes de encostar em `git worktree remove`, e NUNCA usa delete recursivo.
+ * antes de encostar em `git worktree remove`. Delete recursivo continua proibido
+ * como FERRAMENTA GENÉRICA (nada de `fs.rmSync(recursive)`, `rd /s`, `rm -rf`).
+ * A única exceção é o removedor próprio de `close` (`removeArvoreSemSeguirLink`),
+ * que só roda na sobra da pasta DEPOIS das guardas e da remoção dos links, e é
+ * seguro porque nunca segue link: percorre com lstat, link → rmdir/unlink do
+ * link sem entrar, arquivo → unlink, diretório → recursão + rmdir. Usa o prefixo
+ * `\\?\` no Windows, para caminho > 260 caracteres (`node_modules/.pnpm/...`).
  *
  * DEPS — instalação real na worktree, escolhida pelo lockfile na raiz:
  *   pnpm-lock.yaml    → pnpm install
@@ -313,6 +319,14 @@ async function fechar(cfg) {
 
   log(`\n▸ fechando worktree "${nome}"${dryRun ? ' [DRY RUN]' : ''}\n`);
 
+  // ── o destino TEM que ser uma worktree registrada ─────────────────────────
+  // Pasta solta em `.worktrees/` faria as guardas abaixo olharem a MAIN (o git
+  // sobe até ela: status limpo, branch main) e passarem em silêncio. Sem registro
+  // não há o que fechar — e nada aqui pode apagar o que o git não conhece.
+  const reg = entradaRegistrada(destino);
+  if (!reg) falta(`${destino} existe, mas não é uma worktree registrada (git worktree list) — nada foi tocado. Se for sobra de uma worktree antiga, confira o conteúdo e apague à mão.`);
+  if (reg.locked) falta(`a worktree "${nome}" está travada (git worktree lock${reg.locked === true ? '' : `: ${reg.locked}`}) — nada foi tocado. Destrave com \`git worktree unlock\` se for o caso.`);
+
   // ── trabalho não salvo ────────────────────────────────────────────────────
   const naoSalvo = capture('git status --porcelain', destino);
   if (naoSalvo && !flag('--force')) {
@@ -372,9 +386,26 @@ async function fechar(cfg) {
   if (norm(process.cwd()).toLowerCase().startsWith(norm(destino).toLowerCase())) process.chdir(raiz);
   run(`git worktree remove "${destino}"${(flag('--force') || temSubmodulo) ? ' --force' : ''}`, { tolerante: true });
   run('git worktree prune');
-  if (!dryRun && fs.existsSync(destino)) {
-    try { fs.rmdirSync(destino); log(`  pasta vazia removida: ${destino}`); }
-    catch { /* não vazia ou presa — reportado abaixo */ }
+  // Sobra comum no Windows: o `git worktree remove` não apaga arquivo de
+  // `node_modules/.pnpm/...` com caminho > 260 caracteres e deixa a pasta. Aqui as
+  // guardas e a remoção dos links já passaram; o removedor próprio termina o
+  // serviço sem nunca descer em link. Preso por processo → fica em `travados`.
+  // SÓ roda se o git desregistrou: ainda registrada (lock, recusa) = o git
+  // disse não, e o removedor não o contorna.
+  let travados = [];
+  if (!dryRun && entradaRegistrada(destino)) {
+    falta(`o git não desregistrou a worktree "${nome}" (travada ou recusou o remove — mensagem acima). A pasta ${destino} NÃO foi apagada pelo removedor.`);
+  }
+  if (fs.existsSync(destino)) {
+    log('\n  pasta sobrou após o `git worktree remove` — removedor próprio (não desce em link):');
+    const r = removeArvoreSemSeguirLink(destino, { dryRun, dirRaiz: path.join(raiz, '.worktrees') });
+    if (dryRun) {
+      log(`    [dry-run] removeria ${r.arquivos} arquivo(s), ${r.links} link(s), ${r.pastas} pasta(s) — nada foi apagado`);
+      for (const l of r.amostra) log(`    [dry-run]   ${l}`);
+    } else {
+      log(`    ✓ ${r.arquivos} arquivo(s), ${r.links} link(s), ${r.pastas} pasta(s) removidos`);
+      travados = r.travados;
+    }
   }
   if (!flag('--keep-branch')) {
     // `-d` só apaga branch já mergeada — nunca `-D` aqui.
@@ -385,9 +416,120 @@ async function fechar(cfg) {
   else if (cfg.posFechar) log('\n  posFechar (config do projeto): (dry-run: pulado)');
 
   if (!dryRun && fs.existsSync(destino)) {
-    falta(`worktree desregistrada, mas a pasta ${destino} ainda existe (processo com ela aberta como cwd? saia dela e apague à mão).`);
+    const preso = travados.length
+      ? `; travou: ${travados[0]}${travados.length > 1 ? ` (+${travados.length - 1} outro(s))` : ''}`
+      : '';
+    falta(`worktree desregistrada, mas a pasta ${destino} ainda existe${preso} (processo com ela aberta como cwd ou arquivo em uso? feche-o e apague à mão).`);
   }
   ok(`worktree "${nome}" fechada`);
+}
+
+/**
+ * Entrada de `git worktree list --porcelain` para `destino` (caminho canônico,
+ * sem diferenciar maiúscula no Windows), ou null. `locked` = true | motivo | undefined.
+ */
+function entradaRegistrada(destino) {
+  const canon = (p) => { const r = path.resolve(p).replace(/\\/g, '/').replace(/\/+$/, ''); return process.platform === 'win32' ? r.toLowerCase() : r; };
+  const alvo = canon(destino);
+  for (const bloco of capture('git worktree list --porcelain', raiz).split(/\r?\n\r?\n/)) {
+    const linhas = bloco.split(/\r?\n/);
+    const wt = linhas.find((l) => l.startsWith('worktree '));
+    if (!wt || canon(wt.slice('worktree '.length).trim()) !== alvo) continue;
+    const lk = linhas.find((l) => l === 'locked' || l.startsWith('locked '));
+    return { locked: lk ? (lk.slice(7).trim() || true) : undefined };
+  }
+  return null;
+}
+
+/**
+ * Caminho absoluto aceito pelo Windows acima de 260 caracteres: prefixo `\\?\`.
+ * Só no Windows; em outros SOs devolve o caminho como está. Não fiamos no
+ * `LongPathsEnabled` do registro (varia por máquina).
+ */
+function caminhoLongo(p) {
+  if (process.platform !== 'win32') return p;
+  const abs = path.resolve(p);
+  if (abs.startsWith('\\\\?\\')) return abs;
+  if (abs.startsWith('\\\\')) return `\\\\?\\UNC\\${abs.slice(2)}`;
+  return `\\\\?\\${abs}`;
+}
+
+const semPrefixo = (p) => p.replace(/^\\\\\?\\(UNC\\)?/, (_, unc) => (unc ? '\\\\' : ''));
+
+/**
+ * Remove uma árvore SEM nunca descer em link. A garantia é deste código, não de
+ * comportamento implícito do Node (por isso não é `fs.rmSync(recursive)`):
+ *   link (symlink ou junction — `lstat().isSymbolicLink()` é true para ambos no
+ *     Windows) → rmdir/unlink do LINK, sem entrar → o alvo fica intacto;
+ *   arquivo → unlink;
+ *   diretório → recursão e depois rmdir.
+ * Só roda para pasta dentro de `dirRaiz` (`.worktrees/`) e nunca para o próprio
+ * `dirRaiz`. Em dryRun apenas conta e amostra. Devolve contagens, `amostra`
+ * (dry-run) e `travados` (caminhos que não saíram, ex.: arquivo preso por processo).
+ */
+function removeArvoreSemSeguirLink(topo, { dryRun = false, dirRaiz } = {}) {
+  const r = { arquivos: 0, links: 0, pastas: 0, amostra: [], travados: [] };
+  const rel = path.relative(path.resolve(dirRaiz), path.resolve(topo));
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
+    r.travados.push(`${topo} (recusado: fora de ${dirRaiz})`);
+    return r;
+  }
+  const MOSTRAR = 12;
+  const nota = (verbo, p) => { if (dryRun && r.amostra.length < MOSTRAR) r.amostra.push(`${verbo} ${path.relative(topo, semPrefixo(p)) || '.'}`); };
+  const trava = (p, e) => r.travados.push(`${semPrefixo(p)} (${e && e.code ? e.code : e})`);
+
+  /** Tenta op; em EPERM (somente-leitura) limpa o atributo e tenta de novo uma vez. */
+  const tenta = (op, p) => {
+    try { op(); return true; }
+    catch (e) {
+      if (e && e.code === 'EPERM') {
+        // chmod SEGUE link e mudaria o atributo do ALVO: só em não-link.
+        let ehLink = true;
+        try { ehLink = fs.lstatSync(p).isSymbolicLink(); } catch { /* some: trata como link, não mexe */ }
+        if (ehLink) { trava(p, e); return false; }
+        try { fs.chmodSync(p, 0o666); op(); return true; } catch (e2) { trava(p, e2); return false; }
+      }
+      if (e && e.code === 'ENOENT') return true; // já foi
+      trava(p, e);
+      return false;
+    }
+  };
+
+  const apaga = (dir) => {
+    let nomes;
+    try { nomes = fs.readdirSync(dir); } catch (e) { trava(dir, e); return false; }
+    let limpo = true;
+    for (const nm of nomes) {
+      const p = `${dir}${path.sep}${nm}`;
+      let st;
+      try { st = fs.lstatSync(p); } catch (e) { trava(p, e); limpo = false; continue; }
+      if (st.isSymbolicLink()) { // NÃO desce: remove só o link
+        r.links++; nota('rmdir(link)', p);
+        if (!dryRun && !tenta(() => { try { fs.rmdirSync(p); } catch { fs.unlinkSync(p); } }, p)) limpo = false;
+      } else if (st.isDirectory()) {
+        const sub = apaga(p);
+        r.pastas++; nota('rmdir', p);
+        if (!sub || (!dryRun && !tenta(() => fs.rmdirSync(p), p))) limpo = false;
+      } else {
+        r.arquivos++; nota('unlink', p);
+        if (!dryRun && !tenta(() => fs.unlinkSync(p), p)) limpo = false;
+      }
+    }
+    return limpo;
+  };
+
+  const raizLonga = caminhoLongo(topo);
+  let st;
+  try { st = fs.lstatSync(raizLonga); } catch { return r; }
+  if (st.isSymbolicLink()) { // o próprio destino é um link: só o link sai
+    r.links++; nota('rmdir(link)', raizLonga);
+    if (!dryRun) tenta(() => { try { fs.rmdirSync(raizLonga); } catch { fs.unlinkSync(raizLonga); } }, raizLonga);
+    return r;
+  }
+  const limpo = apaga(raizLonga);
+  r.pastas++; nota('rmdir', raizLonga);
+  if (!dryRun && limpo) tenta(() => fs.rmdirSync(raizLonga), raizLonga);
+  return r;
 }
 
 /**

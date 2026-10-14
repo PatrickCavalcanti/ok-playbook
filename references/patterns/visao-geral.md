@@ -121,10 +121,15 @@ CLIs, com cota legível e disparo (o Nidavellir é um exemplo) — o plano passa
 - **Hooks de auto-aprovação** (`.claude/hooks/`, Bash e PowerShell): aprovam sem
   perguntar os comandos de leitura e escrita dentro das áreas conhecidas do
   projeto, e deixam passar para o prompt normal o que é destrutivo fora da
-  worktree. As áreas ficam em `.claude/hooks/lib/areas.mjs`, ajustável.
+  worktree. Git que mexe no repositório inteiro (`stash drop`, `branch -D`,
+  `worktree remove`, `tag -d`) sempre pergunta, inclusive dentro da worktree. As
+  áreas do seu projeto (rascunho, projetos irmãos que ele lê, bins próprios) ficam
+  em `.claude/hooks/areas.local.json`; os hooks em si ficam iguais ao canon.
 - **`.claude/settings.json`**: o `apply` mescla uma vez uma lista de `allow`
   (git, node, npm/pnpm, leitura) e de `deny` (`push --force`, `reset --hard`,
   `clean -f`, instalação global, `publish`). O que você remover depois não volta.
+  Vindo de uma versão antiga do playbook, ele também tira `Bash(rm *)`/`Bash(mv *)`
+  do `allow` e liga o hook novo no lugar do antigo.
 
 → [`permissions.md`](./permissions.md), [`command-forms.md`](./command-forms.md),
 [`worktree.md`](./worktree.md) §6

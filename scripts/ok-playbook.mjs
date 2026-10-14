@@ -66,7 +66,7 @@ function aplicar(o, m, itens, settings) {
   m.playbook = { versao: v, origem: origem() };
   if (settings) {
     const snippet = join(RAIZ_SKILL, 'assets/settings-snippet.json');
-    if (existsSync(snippet)) mesclarSettings(settings, JSON.parse(readFileSync(snippet, 'utf8')), m);
+    if (existsSync(snippet)) for (const linha of mesclarSettings(settings, JSON.parse(readFileSync(snippet, 'utf8')), m)) console.log(`settings\t${linha}`);
   } else if (o.sem.includes('settings')) m.itens.settings = { estado: 'excluido' };
   gravarManifesto(o.projeto, m);
   return escritos;

@@ -20,16 +20,99 @@ export function lerSettings(projeto) {
   return { caminho, existe: true, obj, bom: bruto.startsWith(BOM), crlf: bruto.includes('\r\n'), indent, final: /\n$/.test(texto) };
 }
 
-const registroDe = (m) => ({ allow: [...(m.settings?.allow ?? [])], deny: [...(m.settings?.deny ?? [])], hooks: [...(m.settings?.hooks ?? [])] });
+const registroDe = (m) => ({
+  allow: [...(m.settings?.allow ?? [])], deny: [...(m.settings?.deny ?? [])], ask: [...(m.settings?.ask ?? [])], hooks: [...(m.settings?.hooks ?? [])],
+  // legado já tratado (regras e nomes de hook 0.x): o que o dono re-adicionar depois não é removido de novo
+  legado: { allow: [...(m.settings?.legado?.allow ?? [])], hooks: [...(m.settings?.legado?.hooks ?? [])] },
+});
 const uniao = (a, b) => [...a, ...b.filter((x) => !a.includes(x))];
 
-// Acrescenta só o que o playbook ainda não ofereceu; atualiza m.settings.
+// Nomes de arquivo citados num comando de hook ("node ${X}/.claude/hooks/a.js" → ["node", "a.js", …]).
+const arquivosDe = (cmd) => String(cmd ?? '').split(/[\s"'\\/]+/).filter(Boolean);
+
+// Troca hooks 0.x pelo canônico do mesmo matcher. Só troca se o arquivo canônico vai existir
+// (item hook:<arquivo> não excluído, ou arquivo já no disco); senão mantém e não registra como tratado.
+// Se o canônico já está em QUALQUER entrada do evento com o mesmo matcher, o legado só sai.
+// Devolve { relato, exclusao } — exclusao = hooks que ficaram por causa do canônico excluído.
+function limparHooksLegados(atual, doSnippet, nomes, m, dirHooks) {
+  const relato = [];
+  const exclusao = new Set();
+  for (const [evento, entradas] of Object.entries(atual.hooks ?? {})) {
+    if (!Array.isArray(entradas)) continue;
+    for (const entrada of [...entradas]) {
+      if (!Array.isArray(entrada?.hooks)) continue;
+      const canonico = (doSnippet.hooks?.[evento] ?? []).find((x) => x.matcher === entrada.matcher)?.hooks?.find((h) => h.command)?.command;
+      if (!canonico) continue;
+      const arqCanonico = arquivosDe(canonico).filter((a) => /.(m?js|cjs)$/.test(a));
+      const mesmoMatcher = entradas.filter((x) => x.matcher === entrada.matcher && Array.isArray(x.hooks));
+      for (const h of [...entrada.hooks]) {
+        const legados = arquivosDe(h?.command).filter((a) => nomes.includes(a));
+        if (!legados.length) continue;
+        const jaTem = mesmoMatcher.some((x) => x.hooks.some((y) => y !== h && (y.command === canonico || arquivosDe(y?.command).some((a) => arqCanonico.includes(a)))));
+        if (jaTem) {
+          entrada.hooks.splice(entrada.hooks.indexOf(h), 1);
+          relato.push(`hook legado removido (canônico já presente): ${h.command}`);
+          if (!entrada.hooks.length) entradas.splice(entradas.indexOf(entrada), 1);
+          continue;
+        }
+        const existira = arqCanonico.every((a) => m.itens?.[`hook:${a}`]?.estado !== 'excluido' || existsSync(join(dirHooks, a)));
+        if (!existira) {
+          exclusao.add(h);
+          relato.push(`hook legado mantido: canônico excluído do projeto (${arqCanonico.join(', ')})`);
+          continue;
+        }
+        relato.push(`hook legado trocado: ${h.command} → ${canonico}`);
+        h.command = canonico;
+      }
+    }
+  }
+  return { relato, exclusao };
+}
+
+// Acrescenta só o que o playbook ainda não ofereceu; atualiza m.settings. Na primeira vez
+// por projeto, também tira o legado 0.x (snippet.legado): regras do allow e hooks trocados
+// pelo canônico. Devolve as linhas do que mudou no legado (para o relatório do apply).
 export function mesclarSettings(lido, doSnippet, m) {
   const reg = registroDe(m);
   const atual = lido.obj;
   let mudou = false;
+  const relato = [];
+  const legado = doSnippet.legado ?? {};
+  const regras = (legado.allow ?? []).filter((r) => !reg.legado.allow.includes(r));
+  for (const r of regras) {
+    const lista = atual.permissions?.allow;
+    if (Array.isArray(lista) && lista.includes(r)) {
+      atual.permissions.allow = lista.filter((x) => x !== r);
+      relato.push(`removido allow ${r}`);
+      mudou = true;
+    }
+  }
+  reg.legado.allow = uniao(reg.legado.allow, regras);
+  const nomes = (legado.hooks ?? []).filter((n) => !reg.legado.hooks.includes(n));
+  const dirHooks = join(dirname(lido.caminho), 'hooks');
+  let exclusao = new Set();
+  if (nomes.length) {
+    const r = limparHooksLegados(atual, doSnippet, nomes, m, dirHooks);
+    exclusao = r.exclusao;
+    if (r.relato.some((l) => !l.startsWith('hook legado mantido'))) mudou = true;
+    relato.push(...r.relato);
+  }
+  // o que ainda cita arquivo legado depois da limpeza (qualquer evento ou matcher) segue em uso:
+  // não vira "tratado" (um apply futuro revê) e o arquivo não pode ser apontado para remoção
+  const citados = new Set();
+  for (const entradas of Object.values(atual.hooks ?? {}))
+    for (const e of Array.isArray(entradas) ? entradas : [])
+      for (const h of Array.isArray(e?.hooks) ? e.hooks : [])
+        for (const n of arquivosDe(h?.command)) {
+          if (!(legado.hooks ?? []).includes(n)) continue;
+          citados.add(n);
+          if (nomes.includes(n) && !exclusao.has(h)) relato.push(`hook legado em matcher sem canônico, mantido: ${e.matcher ?? ''} → ${h.command}`);
+        }
+  reg.legado.hooks = uniao(reg.legado.hooks, nomes.filter((n) => !citados.has(n)));
+  // arquivo de hook 0.x ainda no disco: não apaga, só avisa (o agente remove) — só quando nada mais o cita
+  for (const n of legado.hooks ?? []) if (!citados.has(n) && existsSync(join(dirHooks, n))) relato.push(`arquivo de hook legado no disco, remova: .claude/hooks/${n}`);
   const novo = doSnippet.permissions ?? {};
-  for (const k of ['allow', 'deny']) {
+  for (const k of ['allow', 'deny', 'ask']) {
     const lista = atual.permissions?.[k] ?? [];
     for (const r of novo[k] ?? []) {
       if (reg[k].includes(r) || lista.includes(r)) continue;
@@ -56,7 +139,7 @@ export function mesclarSettings(lido, doSnippet, m) {
   }
   m.settings = reg;
   if (mudou) gravarSettings(lido);
-  return mudou;
+  return relato;
 }
 
 function gravarSettings(l) {

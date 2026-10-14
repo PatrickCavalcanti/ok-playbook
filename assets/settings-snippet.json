@@ -1,5 +1,5 @@
 {
-  "_comment": "Permissões path-agnostic + hook canônico do ok-playbook. Para mesclar em .claude/settings.json do projeto. O bloco hooks registra o PreToolUse de auto-approve-project-bash.mjs (template em assets/hooks/) — a skill copia o JS pra .claude/hooks/ e ajusta SCRATCH/LEITURA pela medição do passo 1. Variantes path-specific de worktree NÃO existem mais aqui — viraram hook (ver patterns/worktree.md §6.2).",
+  "_comment": "Permissões path-agnostic + hook canônico do ok-playbook. Para mesclar em .claude/settings.json do projeto. O bloco hooks registra o PreToolUse de auto-approve-project-bash.mjs (template em assets/hooks/) — a skill copia o JS pra .claude/hooks/; as áreas do projeto (scratch, leitura, headsProjeto) vão em .claude/hooks/areas.local.json, nunca no hook. Variantes path-specific de worktree NÃO existem mais aqui — viraram hook (ver patterns/worktree.md §6.2).",
 
   "_comment_deny": "A lista de nunca mora aqui, e não na ausência de allow: com Bash(git *) liberado, um git push --force já estaria aprovado, e o whitelist do hook (que espelha as rules) herdaria a folga. deny ganha do hook e de qualquer rule larga. Ver patterns/permissions.md.",
 
@@ -7,7 +7,82 @@
 
   "_comment_rm": "Bash(rm *) e Bash(mv *) foram REMOVIDOS: aprovavam rm -rf src no root e anulavam a política de destrutivos do hook (worktree livre, root pede). Bash(rm -rf *.worktrees/*) ficou.",
 
+  "_comment_legado": "Legado das versões 0.x. O apply, UMA vez por projeto (registrado em ok-playbook.json → settings.legado), tira do permissions.allow as regras de legado.allow — herdadas do snippet 0.x, o canon as retirou de propósito (ver _comment_rm), e com elas rm -rf src no root passa sem perguntar — e troca, nos hooks do projeto, o comando que cita um arquivo de legado.hooks pelo canônico do mesmo matcher (se o canônico já estiver na lista, o legado só sai; outros hooks da lista ficam). O que o dono re-adicionar depois não é removido de novo. O arquivo do hook legado NÃO é apagado: o apply avisa e o agente remove. Esta chave não é mesclada em settings.json.",
+
+  "_comment_ask": "Git que mexe em estado do repositório INTEIRO — stash, branches, tags, registro de worktrees — sempre pergunta, em qualquer área. O hook já não os aprova (areas.mjs, gitEstadoCompartilhado), mas Bash(git *) no allow aprovaria por rule: ask vem antes de allow na avaliação e força a confirmação. Limite: o ask casa pelo PREFIXO — `git -C <p> stash drop` e `find . -delete`/`find -exec` (flag no meio) escapam dele e ficam com a rule larga; o hook não os aprova, mas Bash(git *)/Bash(find *) sim. A worktree é descartável só no working tree dela.",
+
+  "legado": {
+    "allow": [
+      "Bash(rm *)",
+      "Bash(mv *)"
+    ],
+    "hooks": [
+      "auto-approve-worktree-bash.js",
+      "auto-approve-project-bash.js"
+    ]
+  },
+
   "permissions": {
+    "ask": [
+      "Bash(git stash drop*)",
+      "Bash(git stash clear*)",
+      "Bash(git stash pop*)",
+      "Bash(git branch -D*)",
+      "Bash(git branch -M*)",
+      "Bash(git branch -f*)",
+      "Bash(git branch --force*)",
+      "Bash(git worktree remove*)",
+      "Bash(git worktree prune*)",
+      "Bash(git worktree move*)",
+      "Bash(git tag -d*)",
+      "Bash(git tag --delete*)",
+      "Bash(git update-ref -d*)",
+      "PowerShell(git stash drop*)",
+      "PowerShell(git stash clear*)",
+      "PowerShell(git stash pop*)",
+      "PowerShell(git branch -D*)",
+      "PowerShell(git branch -M*)",
+      "PowerShell(git branch -f*)",
+      "PowerShell(git branch --force*)",
+      "PowerShell(git worktree remove*)",
+      "PowerShell(git worktree prune*)",
+      "PowerShell(git worktree move*)",
+      "PowerShell(git tag -d*)",
+      "PowerShell(git tag --delete*)",
+      "PowerShell(git update-ref -d*)",
+      "Bash(git remote add*)",
+      "Bash(git remote remove*)",
+      "Bash(git remote rm*)",
+      "Bash(git remote rename*)",
+      "Bash(git remote set-url*)",
+      "Bash(git remote set-head*)",
+      "Bash(git remote prune*)",
+      "Bash(git reflog expire*)",
+      "Bash(git reflog delete*)",
+      "Bash(git gc --prune*)",
+      "Bash(git checkout -B*)",
+      "Bash(git switch -C*)",
+      "Bash(git switch --force-create*)",
+      "Bash(git config --unset*)",
+      "Bash(git config --replace-all*)",
+      "Bash(git config --add*)",
+      "PowerShell(git remote add*)",
+      "PowerShell(git remote remove*)",
+      "PowerShell(git remote rm*)",
+      "PowerShell(git remote rename*)",
+      "PowerShell(git remote set-url*)",
+      "PowerShell(git remote set-head*)",
+      "PowerShell(git remote prune*)",
+      "PowerShell(git reflog expire*)",
+      "PowerShell(git reflog delete*)",
+      "PowerShell(git gc --prune*)",
+      "PowerShell(git checkout -B*)",
+      "PowerShell(git switch -C*)",
+      "PowerShell(git switch --force-create*)",
+      "PowerShell(git config --unset*)",
+      "PowerShell(git config --replace-all*)",
+      "PowerShell(git config --add*)"
+    ],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",
