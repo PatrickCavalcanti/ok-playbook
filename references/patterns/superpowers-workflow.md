@@ -26,7 +26,8 @@ Plugin `superpowers-marketplace` instalado via `claude /plugin install`.
 O invariante é um só: **a revisão do conjunto / final roda no modelo mais forte
 disponível.** Quem planeja e orquestra é a sessão que o usuário abriu — o playbook
 não fixa o modelo dela. O resto depende de a sessão ter ou não um desk de workers
-de várias CLIs (Nidavellir). Detalhe completo em
+de várias CLIs (orquestrador que lista os workers, lê a cota de cada CLI e os
+dispara — ex.: Nidavellir). Detalhe completo em
 [`subagent-dispatch.md`](./subagent-dispatch.md) §4.
 
 **Sem desk** — divisão por papel (não avaliar complexidade da task):
@@ -37,10 +38,10 @@ de várias CLIs (Nidavellir). Detalhe completo em
 | Revisão de fase (spec + qualidade, agentes separados) | Sonnet |
 | Revisão forte (conjunto, final) | Opus (ou o mais forte disponível) |
 
-**Com desk (Nidavellir)** — o plano distribui:
+**Com desk de workers** — o plano distribui:
 
-- O planejador consulta `list_workers` e a cota das CLIs (`get_cli_usage_limits`)
-  e **cada task do plano declara o worker que a implementa e o porquê**
+- O planejador lista o elenco do desk e a cota das CLIs (no Nidavellir:
+  `list_workers`, `get_cli_usage_limits`) e **cada task do plano declara o worker que a implementa e o porquê**
   (dificuldade × capacidade do worker; cota da CLI).
 - Paraleliza o que for possível, de preferência em CLIs diferentes, para render
   as cotas de todas; o **orquestrador executa os commits** — com desk, worker na
@@ -108,9 +109,9 @@ A classificação é apresentada **uma vez, para o plano inteiro**, antes do pri
 
 > "O plano tem 3 fases. Fase 1: A→B sequenciais. Fase 2: C/D/E em paralelo (arquivos disjuntos), commit por mim. Fase 3: F sozinha. Testes e reviews ao fim de cada fase. OK?"
 
-Com desk (Nidavellir), o mesmo gate leva o mapa de workers e a cota que o motivou:
+Com desk de workers, o mesmo gate leva o mapa de workers e a cota que o motivou:
 
-> "Fase 2: C (mecânica) → implementer-luna, D (média) → implementer-haiku, E (difícil) → implementer-sol, em paralelo em três CLIs. Revisão de fase: reviewer-gemini. Revisão final: reviewer-opus. Cota Claude em 80% — deixei só D nela. OK, ou troca algum?"
+> "Fase 2: C (mecânica) → implementer-leve (CLI A), D (média) → implementer-medio (CLI B), E (difícil) → implementer-forte (CLI C), em paralelo em três CLIs. Revisão de fase: reviewer-medio (CLI D). Revisão final: reviewer-forte (CLI B). Cota da CLI B em 80% — deixei só D nela. OK, ou troca algum?"
 
 Aprovado o mapa, **executar todas as fases sem novo pedido de OK**. Entre fases o controller *reporta* (o que entrou, o que os reviews acharam) — não pergunta. Parar entre fases de um plano aprovado contradiz o perfil `dev-early` ("executar planos longos sem pedir confirmação a cada etapa", ver [`profiles.md`](./profiles.md)) e é a fricção que essa regra existe pra evitar.
 
@@ -133,7 +134,7 @@ Perfis mais conservadores (`dev-stable`, `review`) mantêm seus próprios pontos
 |---|---|
 | Sem desk, fase sequencial | implementer (default do skill) |
 | Fase paralela na mesma worktree (com ou sem desk) | controller, com a receita abaixo |
-| Com desk (Nidavellir), qualquer fase, mesma worktree | controller, com a receita abaixo |
+| Com desk de workers, qualquer fase, mesma worktree | controller, com a receita abaixo |
 | Worktree própria por agente (índice próprio) | o worker/implementer |
 
 Subagentes paralelos na mesma worktree **compartilham o índice do `.git`**: `git add` de um pode ser capturado pelo `git commit` de outro, gerando commit com conteúdo de A e mensagem de B. Em **fase paralela**, portanto:
@@ -151,7 +152,7 @@ Subagentes paralelos na mesma worktree **compartilham o índice do `.git`**: `gi
 
 Granularidade não se perde: um commit por task, então `git bisect` continua barato.
 
-Em **fase sequencial sem desk** nada muda — o implementer commita ao final da task (default do skill). **Com desk** (Nidavellir), o controller commita toda task, também em fase sequencial, com esta mesma receita ([`subagent-dispatch.md`](./subagent-dispatch.md) §4.3 item 4) — ver a tabela "Quem commita" acima.
+Em **fase sequencial sem desk** nada muda — o implementer commita ao final da task (default do skill). **Com desk** de workers, o controller commita toda task, também em fase sequencial, com esta mesma receita ([`subagent-dispatch.md`](./subagent-dispatch.md) §4.3 item 4) — ver a tabela "Quem commita" acima.
 
 **Escape hatch:** se o custo de contexto incomodar, a saída é **worktree por agente paralelo** (índice próprio em `.git/worktrees/<name>/index`, implementer volta a commitar), não delegar o commit a outro subagente — delegar custaria mais, porque exigiria reenviar os reports.
 

@@ -68,9 +68,9 @@ Roteamento de modelos (detalhe em `<playbook-root>patterns/subagent-dispatch.md`
 | Revisão de fase — spec + qualidade (subagentes separados) | Sonnet |
 | Revisão do conjunto / final (gate da entrega) | Opus (ou o mais forte disponível) |
 
-**Com desk (Nidavellir — `list_workers`/`run_worker`)** — o plano distribui:
+**Com desk de workers** (orquestrador que lista workers de várias CLIs, lê a cota e os dispara — ex.: Nidavellir, `list_workers`/`run_worker`) — o plano distribui:
 
-- Consultar `list_workers` e a cota das CLIs (`get_cli_usage_limits`) ao planejar; **cada task declara o worker que a implementa e o porquê** (dificuldade × capacidade do worker; cota). Worker da própria CLI → subagente nativo.
+- Listar o elenco do desk e a cota das CLIs ao planejar (Nidavellir: `list_workers`, `get_cli_usage_limits`); **cada task declara o worker que a implementa e o porquê** (dificuldade × capacidade do worker; cota). Worker da própria CLI → subagente nativo.
 - Paralelizar o que for possível, de preferência em CLIs diferentes, para render as cotas de todas; o **orquestrador executa os commits** — com desk, worker na mesma worktree não commita nem em fase sequencial (receita de fase paralela abaixo); com worktree própria por agente, o worker commita.
 - O mapa task → worker (e revisores) vai no gate único, junto com o de paralelismo; o usuário aprova ou troca. CLI perto do limite: dizer qual e quanto já foi, e propor troca.
 - Revisão de fase: reviewer médio/leve, de preferência de outro fornecedor que o implementador. Revisão final: exige reviewer de capacidade máxima elegível (CLI não esgotada, cota que aguenta a revisão); sem nenhum nesse nível, aguardar reset ou decisão do usuário — nunca um inferior. Capacidade não autoriza decidir: decisão de desenho fica no controller.

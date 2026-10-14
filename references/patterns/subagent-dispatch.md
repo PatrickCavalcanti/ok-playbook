@@ -55,9 +55,9 @@ Este doc serve a três usos:
 
 > **Invariante: a revisão do conjunto / final roda no modelo mais forte disponível.**
 > O resto depende do ambiente: sem desk de workers vale a divisão por papel
-> (§4.2); com desk (Nidavellir) o plano distribui o trabalho entre as CLIs (§4.3).
+> (§4.2); com desk de workers o plano distribui o trabalho entre as CLIs (§4.3).
 
-| Papel | Sem desk (§4.2) | Com desk — Nidavellir (§4.3) |
+| Papel | Sem desk (§4.2) | Com desk de workers (§4.3) |
 |---|---|---|
 | **Sessão principal** (planeja e orquestra) | a sessão que o usuário abriu — o playbook não fixa | idem |
 | **Scout** (varre arquivos, extrai o relevante, devolve resumo — não muda código) | menor capaz | worker `scout` escolhido no plano |
@@ -101,29 +101,37 @@ Tradução prática (Anthropic, 2026-Q4):
 caso "esta task merece o modelo grande?" é variabilidade arbitrária. A
 assimetria fixa (econômico implementa, forte revisa) é mais robusta.
 
-### 4.3 Com desk (Nidavellir): o plano distribui entre as CLIs
+### 4.3 Com desk de workers: o plano distribui entre as CLIs
 
-Quando a sessão alcança workers de várias CLIs (`list_workers`, `run_worker`,
-`get_cli_usage_limits`), a escolha deixa de ser fixa e **vira parte do plano**. O
-objetivo é duplo: cada task no worker que dá conta dela, e **as cotas de todas as
+**Desk de workers** é qualquer orquestrador que dá à sessão um elenco de workers
+de várias CLIs/fornecedores, com três capacidades: **listar o elenco** (cada
+worker com papel, descrição do que faz bem e capacidade relativa), **ler a cota**
+de cada CLI e **disparar** um worker com um prompt. Os nomes de ferramenta abaixo
+são os do Nidavellir (`list_workers`, `get_cli_usage_limits`, `run_worker`),
+usado como exemplo; com outro desk, use o equivalente dele.
+
+Quando a sessão alcança um desk, a escolha deixa de ser fixa e **vira parte do
+plano**. O objetivo é duplo: cada task no worker que dá conta dela, e **as cotas de todas as
 CLIs disponíveis rendendo** — não uma esgotada enquanto as outras ficam paradas.
 
-1. **Levantar elenco e cota no momento do plano.** `list_workers` (description,
-   `type`, `priority`, `cota`); para trabalho longo, `get_cli_usage_limits`. Não
-   decidir de memória — elenco e cota mudam. Cota sem leitura (`nivel: null`) não
-   é 0%: pesar pelo que se sabe da CLI.
+1. **Levantar elenco e cota no momento do plano.** Listar o elenco (no
+   Nidavellir: `list_workers` — description, `type`, `priority`, `cota`); para
+   trabalho longo, ler a cota detalhada (`get_cli_usage_limits`). Não decidir de
+   memória — elenco e cota mudam. Cota sem leitura não é 0%: pesar pelo que se
+   sabe da CLI.
 2. **Cada task declara o implementador e o porquê**, numa linha do plano
    (`Implementer: <worker> — <dificuldade>; <cota>`). Critérios:
-   - **dificuldade × capacidade** — `priority` do worker e o "use para / não use
-     para" da description; implementação difícil (código delicado, muitas
-     costuras, lógica sutil) vai para worker forte, task mecânica e bem
+   - **dificuldade × capacidade** — a capacidade declarada do worker (no
+     Nidavellir, `priority`) e o "use para / não use para" da description;
+     implementação difícil (código delicado, muitas costuras, lógica sutil) vai para worker forte, task mecânica e bem
      especificada para worker leve. **Capacidade não autoriza decidir:** decisão
      aberta ou de desenho continua no controller (§6.3, §7), seja qual for o
      modelo do worker — o plano a resolve antes do dispatch;
    - **cota** — espalhar a carga pelas CLIs; não dar trabalho longo a CLI em cota
      crítica ou esgotada (ela pode parar no meio);
-   - **worker da própria CLI** (`mesmaCli: true`) → preferir o subagente nativo
-     (ferramenta Agent) com o mesmo modelo.
+   - **worker da própria CLI** (a mesma da sessão; no Nidavellir,
+     `mesmaCli: true`) → preferir o subagente nativo (ferramenta Agent) com o
+     mesmo modelo.
 3. **Paralelizar o que for possível.** Tasks em arquivos disjuntos vão em
    paralelo, de preferência em CLIs diferentes — cotas diferentes trabalhando ao
    mesmo tempo. As regras de colisão continuam (mesmo arquivo ou lockfile =
@@ -154,7 +162,7 @@ CLIs disponíveis rendendo** — não uma esgotada enquanto as outras ficam para
    (review achando defeito recorrente no que ele entregou, task devolvida
    incompleta por incapacidade, lentidão desproporcional) ou se outro
    worker/modelo serviria melhor, o orquestrador **sugere** ao usuário: trocar o
-   worker no resto do plano, ajustar description/`priority`, criar ou aposentar
+   worker no resto do plano, ajustar description/capacidade, criar ou aposentar
    worker. A sugestão vai no report da fase ou da entrega — não é parada nova.
    Dentro do plano aprovado, trocar um worker que falhou **por desempenho** por
    outro de capacidade igual ou maior é decisão do controller, relatada.
@@ -320,7 +328,7 @@ Sem worktree, subagentes que falham deixam estado órfão no checkout principal.
 |---|---|
 | Sem desk: avaliar complexidade da task para escolher modelo | Variabilidade arbitrária; usa regra por papel (§4.2) |
 | Com desk: escolher worker sem justificativa no plano, ou sempre o mais barato | A escolha por task só se sustenta com o porquê escrito (§4.3) |
-| Com desk: decidir o elenco de memória, sem `list_workers`/cota | Elenco e cota mudam; CLI esgotada para no meio da task |
+| Com desk: decidir o elenco de memória, sem listar elenco e cota | Elenco e cota mudam; CLI esgotada para no meio da task |
 | Sem desk: implementer no modelo mais forte "porque é importante" | Cara sem ganho; o forte compensa na revisão final (com desk, worker forte para task difícil é escolha legítima — com o porquê no plano, §4.3) |
 | Revisão do conjunto / final em modelo menor "para economizar" | É o gate da entrega, onde o modelo grande compensa; economizar ali zera o valor da revisão (a revisão de fase no modelo menor é a política, §4) |
 | Levantamento amplo feito inline no controller quando dava pra delegar a um Scout | Queima janela e tempo do controller; Scout devolve só o resumo (§4.1) |
