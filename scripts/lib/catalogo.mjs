@@ -26,21 +26,26 @@ export function catalogo(raizSkill, paths) {
   const add = (id, tipo, destino, origem, conteudo) =>
     itens.push({ id, tipo, destino, origem, fonte: ler(origem), conteudo });
 
-  const regras = resolverPlaceholders(ler('assets/rules.md'), paths).trim();
+  const regras = resolverPlaceholders(ler('assets/rules.md'), paths, 'CLAUDE.md').trim();
   for (const arq of ['CLAUDE.md', 'AGENTS.md']) add(`regras:${arq}`, 'bloco', arq, 'assets/rules.md', regras);
 
   for (const origem of listar(raizSkill, 'references/agents').filter((r) => r.endsWith('.md'))) {
     const nome = origem.split('/').pop().replace(/\.md$/, '');
-    const conteudo = renderSkill(nome, ler(origem), paths);
+    // .claude/skills e .agents/skills têm a mesma profundidade: o mesmo texto serve às duas
+    const conteudo = renderSkill(nome, ler(origem), paths, `.claude/skills/${nome}/SKILL.md`);
     for (const base of ['.claude/skills', '.agents/skills'])
       add(`skill:${base}/${nome}`, 'arquivo', `${base}/${nome}/SKILL.md`, origem, conteudo);
   }
 
-  for (const origem of listar(raizSkill, 'references/patterns'))
-    add(`pattern:${origem.split('/').pop()}`, 'arquivo', `${paths.docs}ok-playbook/patterns/${origem.slice('references/patterns/'.length)}`, origem, resolverPlaceholders(ler(origem), paths));
+  for (const origem of listar(raizSkill, 'references/patterns')) {
+    const destino = `${paths.docs}ok-playbook/patterns/${origem.slice('references/patterns/'.length)}`;
+    add(`pattern:${origem.split('/').pop()}`, 'arquivo', destino, origem, resolverPlaceholders(ler(origem), paths, destino));
+  }
 
-  for (const origem of listar(raizSkill, 'assets/templates'))
-    add(`template:${origem.split('/').pop()}`, 'arquivo', `${paths.docs}ok-playbook/templates/${origem.slice('assets/templates/'.length)}`, origem, resolverPlaceholders(ler(origem), paths));
+  for (const origem of listar(raizSkill, 'assets/templates')) {
+    const destino = `${paths.docs}ok-playbook/templates/${origem.slice('assets/templates/'.length)}`;
+    add(`template:${origem.split('/').pop()}`, 'arquivo', destino, origem, resolverPlaceholders(ler(origem), paths, destino));
+  }
 
   // hooks: conteúdo idêntico em qualquer checkout (a raiz é calculada em tempo de execução)
   for (const origem of listar(raizSkill, 'assets/hooks')) {
@@ -50,8 +55,9 @@ export function catalogo(raizSkill, paths) {
 
   for (const [tpl, chave, nomeDestino] of SEMENTES) {
     const origem = `assets/templates/${tpl}`;
-    if (existsSync(join(raizSkill, origem)))
-      add(`semente:${chave}`, 'semente', `${paths[chave]}${nomeDestino}`, origem, resolverPlaceholders(ler(origem), paths));
+    if (!existsSync(join(raizSkill, origem))) continue;
+    const destino = `${paths[chave]}${nomeDestino}`;
+    add(`semente:${chave}`, 'semente', destino, origem, resolverPlaceholders(ler(origem), paths, destino));
   }
   return itens;
 }

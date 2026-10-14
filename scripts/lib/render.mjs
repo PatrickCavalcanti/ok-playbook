@@ -1,5 +1,6 @@
 // Render: placeholders, bloco entre marcadores, hash.
 import { createHash } from 'node:crypto';
+import { posix } from 'node:path';
 
 export const MARCA_FIM = '<!-- ok-playbook:end -->';
 export const marcaInicio = (versao) => `<!-- ok-playbook:start v${versao} -->`;
@@ -30,10 +31,8 @@ export function blocoQuebrado(texto) {
     || conta(t, /<!-- ok-playbook:include:start -->/g) !== conta(t, /<!-- ok-playbook:include:end -->/g);
 }
 
-export function resolverPlaceholders(texto, paths) {
-  let t = lf(texto);
-  t = t.replace(/<playbook-root>agents\/([a-z0-9-]+)\.md/g, '.claude/skills/$1/SKILL.md');
-  const mapa = {
+function mapaDePaths(paths) {
+  return {
     'playbook-root': `${paths.docs}ok-playbook/`,
     'docs-root': paths.docs,
     'arch-root': paths.arch,
@@ -44,6 +43,36 @@ export function resolverPlaceholders(texto, paths) {
     'insights-root': paths.insights,
     'pendencias-root': paths.pendencias,
   };
+}
+
+// Alvo de link markdown que começa por placeholder -> caminho relativo ao diretório do arquivo.
+// `destino` = caminho do arquivo a partir da raiz do projeto. Âncora (#x) e barra final são preservadas.
+function relativizarLinks(t, mapa, destino) {
+  const dir = posix.dirname(destino.replace(/\\/g, '/'));
+  // blocos de código e código inline ficam de fora (partes ímpares do split)
+  return t.split(/(```[\s\S]*?```|`[^`\n]*`)/).map((parte, i) => (i % 2 ? parte : relativizarTrecho(parte, mapa, dir))).join('');
+}
+
+function relativizarTrecho(t, mapa, dir) {
+  return t.replace(/\]\(<([a-z]+-root)>\/?([^)\s]*)(\s+"[^"]*")?\)/g, (m, nome, resto, titulo = '') => {
+    if (!(nome in mapa)) return m;
+    const [caminho, ...ancora] = resto.split('#');
+    const skill = nome === 'playbook-root' ? caminho.match(/^agents\/([a-z0-9-]+)\.md$/) : null;
+    const alvo = skill ? `.claude/skills/${skill[1]}/SKILL.md` : `${mapa[nome]}${caminho}`;
+    // raiz fictícia: posix.relative resolveria caminho relativo contra o cwd
+    let rel = posix.relative(posix.join('/', dir), posix.join('/', alvo)) || '.';
+    if (alvo.endsWith('/') && !rel.endsWith('/')) rel += '/';
+    return `](${rel}${ancora.length ? `#${ancora.join('#')}` : ''}${titulo})`;
+  });
+}
+
+// `destino` (opcional): onde o texto será gravado. Com ele, só alvos de link markdown
+// viram relativos ao arquivo; prosa e código seguem com o caminho a partir da raiz (como o agente lê).
+export function resolverPlaceholders(texto, paths, destino) {
+  let t = lf(texto);
+  const mapa = mapaDePaths(paths);
+  if (destino) t = relativizarLinks(t, mapa, destino);
+  t = t.replace(/<playbook-root>agents\/([a-z0-9-]+)\.md/g, '.claude/skills/$1/SKILL.md');
   // os valores já terminam em `/`: `<x-root>/` não pode virar `//`
   for (const [nome, valor] of Object.entries(mapa)) t = t.split(`<${nome}>/`).join(valor).split(`<${nome}>`).join(valor);
   return t;
@@ -70,8 +99,8 @@ export function inserirBloco(atual, conteudo, versao) {
   return bom + (t ? `${bloco}${eol}${eol}${t}` : `${bloco}${eol}`);
 }
 
-export function renderSkill(nome, texto, paths) {
-  const t = resolverPlaceholders(texto, paths);
+export function renderSkill(nome, texto, paths, destino) {
+  const t = resolverPlaceholders(texto, paths, destino);
   const m = t.match(/^---\n([\s\S]*?)\n---\n/);
   if (!m) throw new Error(`protocolo ${nome} sem frontmatter`);
   const campos = m[1].split('\n').filter((l) => /^(description|when_to_use):/.test(l));
