@@ -26,6 +26,7 @@ Este projeto foi configurado pela skill `ok-playbook`. Os patterns estão em `<p
   - `superpowers-workflow.md` — workflow superpowers + roteamento por papel
   - `dev-process.md` — **o processo de trabalho**: quatro fluxos, plano, reviews dirigidos, scripts de processo, entrega, pendências, sinal de atenção
   - `docs-structure.md` — hierarquia `<docs-root>` + `_index.md` da arquitetura + ciclo de specs/planos
+  - `visao-geral.md` — **comece por aqui**: o que o playbook muda no projeto e no comportamento do agente, com ponteiro para cada pattern
 
 - **Agents agnósticos** (skills em `.claude/skills/`; Codex: `.agents/skills/`): `docs-review`, `new-agent`, `permissions-review`, `playbook-contribute`. Revalidar contra o canon: rode a skill `ok-playbook` no modo atualizar.
 - **Templates:** `<playbook-root>templates/` — feedback, draft, insight, ARCHITECTURE, `_index`

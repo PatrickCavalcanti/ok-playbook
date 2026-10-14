@@ -8,6 +8,11 @@ Depois de configurado, o projeto é **autocontido** — o agente lê tudo de den
 dele, sem precisar da skill instalada. A skill só entra para configurar,
 atualizar/auditar e contribuir de volta.
 
+**O que muda no seu projeto** — pastas, comportamento do agente em toda sessão,
+spec e plano, uso com desk de workers, o que ele não faz sem você e o que mexe
+na sua máquina: [`references/patterns/visao-geral.md`](references/patterns/visao-geral.md).
+A skill mostra esse resumo antes de configurar e permite deixar itens de fora.
+
 ## Instalação
 
 Clone o repositório e ligue-o ao diretório de skills do agente.
@@ -29,7 +34,8 @@ Em Linux/macOS: `ln -s /caminho/para/ok-playbook ~/.claude/skills/ok-playbook`.
 
 ## Uso
 
-A skill tem três modos (detalhes no [`SKILL.md`](SKILL.md)):
+A skill tem três modos (detalhes no [`SKILL.md`](SKILL.md)), além de responder
+"o que o ok-playbook faz?" a partir da visão geral:
 
 - **Configurar** — projeto sem `ok-playbook.json`: define os caminhos, mostra o `plan` e materializa o canon no projeto.
 - **Atualizar/auditar** — projeto já configurado: compara o que está no projeto com o canon, item por item, e oferece atualizar, manter ou marcar como customização local.

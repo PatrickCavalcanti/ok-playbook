@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 — 2026-10-14
+
+**Apresentação para quem chega.**
+
+- `references/patterns/visao-geral.md` (novo, materializado como pattern): o que o playbook muda no projeto, na visão de quem usa — pastas, o que o agente faz em toda sessão (perfil, sinal de atenção, feedback, pendências, permissões, memória), como conduz o trabalho (quatro fluxos, spec e plano — integrado ao superpowers, mas qualquer skill que produza spec e plano serve —, gate único, worktree, scripts de processo), uso com desk de workers, o que não faz sem o usuário, o que mexe na máquina e o que dá para recusar.
+- `SKILL.md`: Modo 1 ganha o passo 1a (apresentar a visão geral e converter recusas em `--sem`/`--manter`); modo **Explicar** para "o que o ok-playbook faz?"; `when_to_use` com esse gatilho.
+- `assets/rules.md` e `README.md` apontam para a visão geral.
+
 ## 1.2.0 — 2026-10-14
 
 **Contribuição de fora chega como issue ou pull request.**

@@ -1,7 +1,7 @@
 ---
 name: ok-playbook
 description: "Configura um projeto com o processo de desenvolvimento do ok-playbook (regras para CLAUDE.md/AGENTS.md, protocolos docs-review/new-agent/permissions-review/playbook-contribute, patterns, templates, hooks) e mantém o projeto alinhado ao canon. Também leva mudanças do projeto de volta ao playbook."
-when_to_use: "configurar o ok-playbook num projeto; migrar um projeto que usa o formato antigo (submódulo, dependência npm ou cópia do ok-playbook) — só a pedido explícito; atualizar/auditar um projeto já configurado contra o canon ('revalida o playbook', 'audita drift'); propor mudança no playbook a partir de insight/feedback do projeto ('sobe isso pro playbook')"
+when_to_use: "explicar o que o ok-playbook faz num projeto ('o que o ok-playbook configura?', 'explica o playbook'); configurar o ok-playbook num projeto; migrar um projeto que usa o formato antigo (submódulo, dependência npm ou cópia do ok-playbook) — só a pedido explícito; atualizar/auditar um projeto já configurado contra o canon ('revalida o playbook', 'audita drift'); propor mudança no playbook a partir de insight/feedback do projeto ('sobe isso pro playbook')"
 ---
 
 # ok-playbook
@@ -35,6 +35,7 @@ Linhas do `plan`/`apply` (`<classe>␉<id>␉<destino>`):
 
 0. **Formato antigo?** Se o projeto tem o marcador `<!-- ok-playbook:include:start -->` no CLAUDE.md, `ok-playbook.config.json`, `OKPLAYBOOK.md`, dependência `ok-playbook` no `package.json`, submódulo ou pasta `packages/ok-playbook`, ou skills que apontam para `…/ok-playbook/agents/` → é migração: siga **"Migração de um projeto 0.x"** abaixo, que usa os passos deste modo no meio.
 1. Confirme a raiz do projeto (git root) e que a árvore está limpa (`git status --short`). Suja → pergunte ao dono se commita antes.
+1a. **Apresente o que muda.** Leia `<SKILL_DIR>/references/patterns/visao-geral.md` e resuma ao dono, em poucas linhas por seção, o que passa a existir no projeto, como o agente passa a se comportar (toda sessão, trabalho com spec e plano, desk de workers se ele usa um) e o que mexe na máquina (hooks, permissões). Pergunte se algo deve ficar de fora; cada recusa vira `--sem <id>` no `apply` (passo 7) ou regra editada no bloco + `--manter regras:CLAUDE.md`. Não pule este passo em projeto de outra pessoa — é o único momento em que ela vê o conjunto antes de valer.
 2. Proponha os caminhos com os defaults abaixo, ajustados ao que já existe no projeto (procure pastas de docs, feedback, pendências). Pergunte só o que o projeto não responde.
    `docs` `docs/` · `arch` `docs/project-architecture/` · `agents` `docs/project-architecture/agents/` · `superpowers` `docs/superpowers/` · `backlog` `docs/agent-feedback/` · `drafts` `docs/_drafts/` · `insights` `docs/insights/` · `pendencias` `docs/pendencias/`
 3. Grave `ok-playbook.json` com `{ "paths": { … }, "contribuicao": "<modo>" }` — `direct` se o dono mantém o playbook (o clone da skill tem push na main); senão `request` (contribuições viram issue; `branch-pr` se ele prefere mandar PR). O script exige que o arquivo exista; chaves omitidas em `paths` recebem o default acima.
@@ -131,6 +132,10 @@ canon (Modo 3) ou para os complementos, e o bloco é regenerado com `apply`.
    - `do-projeto-ausente` → o script do projeto sumiu: trate como no Modo 1, passo 5.
    - `marcador-quebrado` → `CLAUDE.md`/`AGENTS.md` tem `ok-playbook:start` sem `ok-playbook:end` (ou o contrário): o script não escreve esse item. Mostre ao dono o trecho, ele conserta os marcadores à mão (ou pede para você consertar), e rode `apply` de novo.
 3. `apply` → `status` → `OK`. Proponha o commit (`chore: atualiza ok-playbook para v<versão>`).
+
+## Explicar (qualquer projeto)
+
+Pergunta sobre o que o ok-playbook faz ou impõe: responda a partir de `references/patterns/visao-geral.md` (ou da cópia materializada em `<docs>/ok-playbook/patterns/visao-geral.md`, se o projeto já está configurado — ela mostra os caminhos reais dele). Para o detalhe de uma regra, abra o pattern que a visão geral aponta. Não configure nada neste modo.
 
 ## Modo 3 — Contribuir
 
