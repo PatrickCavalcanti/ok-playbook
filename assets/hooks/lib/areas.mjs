@@ -23,7 +23,7 @@
  * a canonicalização é feita aqui). JSON ausente ou inválido = só os defaults —
  * o hook nunca quebra por causa dele (com OK_HOOK_DEBUG, o stderr avisa), e
  * entrada que ampliaria demais a aprovação (shell em headsProjeto, raiz/drive/
- * ancestral do projeto em scratch/leitura, `..`) é descartada.
+ * ancestral do projeto em scratch, home em scratch/leitura, `..`) é descartada.
  *
  * O `areas.local.json` é VERSIONADO (commitado com o projeto): uma sessão aberta
  * numa worktree usa os hooks da cópia da worktree, então o arquivo precisa estar
@@ -65,7 +65,7 @@ export const PLUGINS = `${(process.env.USERPROFILE || process.env.HOME || '').re
  *   - path não absoluto, só um drive ou a raiz `/`;
  *   - path com segmento `..` que sobrou depois do canon (`c:/..`, `e:/a/../..`) —
  *     o canon mantém o `..` que passa da raiz, e ele escaparia da área;
- *   - `scratch`/`leitura` que seja o PROJETO, ancestral dele ou ancestral da home
+ *   - `scratch` que seja o PROJETO ou ancestral dele; `scratch`/`leitura` que seja a home ou ancestral dela
  *     (viraria escrita livre no projeto inteiro, ou leitura da máquina toda);
  *   - `headsProjeto` que seja shell, interpretador de comando ou wrapper (executa
  *     qualquer coisa e escapa de todas as checagens por argumento).
@@ -103,7 +103,11 @@ const LOCAL = (() => {
     const paths = (k) => lista(k).map((p) => canon(p)).filter((p) => {
       const motivo = !/^([a-z]:)?\/./.test(p) ? 'precisa ser path absoluto, não só um drive nem a raiz'
         : p.split('/').includes('..') ? 'tem segmento ".." que escapa da raiz'
-        : (dentro(p, PROJETO) || (home && dentro(p, home))) ? 'é o projeto, ou ancestral do projeto ou da home'
+        // scratch (escrita livre) nunca cobre o projeto nem a home; leitura pode ser o
+        // monorepo que contém o projeto — contexto() resolve o PROJETO antes da leitura,
+        // então isso só dá leitura aos irmãos — mas nunca a home inteira (segredos).
+        : (k === 'scratch' && dentro(p, PROJETO)) ? 'é o projeto ou ancestral dele'
+        : (home && dentro(p, home)) ? 'é a home ou ancestral dela'
         : '';
       if (motivo) descarta(`"${k}": ignorado (${motivo}): ${p}`);
       return !motivo;

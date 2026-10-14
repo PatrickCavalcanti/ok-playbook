@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1 — 2026-10-14
+
+- `areas.local.json`: `leitura` volta a aceitar um ancestral do projeto (o monorepo que o contém) — `contexto()` resolve o projeto antes da leitura, então isso só dá leitura aos irmãos. `scratch` continua recusando o projeto e seus ancestrais; os dois continuam recusando a home e seus ancestrais. Visto ao atualizar um pacote que mora dentro de um monorepo.
+- Hook-tests: o caso de travessia com `..` sobe até a raiz do disco, em vez de dois níveis — com o pai do projeto em `leitura`, `../../x` caía numa área conhecida.
+
 ## 1.4.0 — 2026-10-14
 
 **Correções vistas nas primeiras migrações para a skill.**

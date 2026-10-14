@@ -36,6 +36,9 @@ const WT = `${R}/.worktrees/exemplo`;
 const HOME = (process.env.USERPROFILE || process.env.HOME || '').replace(/\\/g, '/');
 const IRMAO = LEITURA.find((p) => p !== canon(`${HOME}/.claude`));   // primeiro irmão declarado
 const SCRATCH = AREAS_SCRATCH[0];
+// Travessia com `..` até a RAIZ do disco: cai fora de qualquer área mesmo quando
+// o pai do projeto é área de leitura (projeto dentro de um monorepo).
+const SUBIDA = Array(R.split('/').length - 1).fill('..').join('/');
 const FORA = ['c:/okpb-fora-de-area', '/okpb-fora-de-area', 'z:/okpb-fora-de-area']
   .find((p) => !dentroDeAlguma([PROJETO, ...AREAS_SCRATCH, ...LEITURA], canon(p)));
 if (!FORA) { console.error('sem candidato a FORA: todos caem numa área'); process.exit(1); }
@@ -64,7 +67,7 @@ const casos = [
   [`cd ${R.replace(/^([a-z]):/i, '/$1')} && ls`, R, true],        // forma MSYS
   [`cd /${R.replace(/^([a-z]):/i, '/$1')} && ls`, R, true],
   ['cd "$MAIN" && npm test', R, false],                          // path não resolvido
-  [`cd "${R}/../../evil" && node x.js`, R, false],               // traversal com ..
+  [`cd "${R}/${SUBIDA}/okpb-evil" && node x.js`, R, false],      // traversal com .. até a raiz
   [`cd "${R}/packages/../packages/powers" && npm test`, R, true],// .. que não escapa
   [`cd "${FORA}" && npm test`, R, false],                        // área desconhecida
 

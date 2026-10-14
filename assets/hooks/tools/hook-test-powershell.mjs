@@ -33,6 +33,9 @@ const WT = `${RW}\\.worktrees\\exemplo`;
 const HOME = (process.env.USERPROFILE || process.env.HOME || '').replace(/\//g, '\\');
 const IRMAO = LEITURA.find((p) => p !== canon(`${HOME}/.claude`));   // primeiro irmão declarado
 const SCRATCH = AREAS_SCRATCH[0];
+// Travessia com `..` até a RAIZ do disco: cai fora de qualquer área mesmo quando
+// o pai do projeto é área de leitura (projeto dentro de um monorepo).
+const SUBIDA = Array(R.split('/').length - 1).fill('..').join('\\');
 const FORA = ['c:/okpb-fora-de-area', '/okpb-fora-de-area', 'z:/okpb-fora-de-area']
   .find((p) => !dentroDeAlguma([PROJETO, ...AREAS_SCRATCH, ...LEITURA], canon(p)));
 if (!FORA) { console.error('sem candidato a FORA: todos caem numa área'); process.exit(1); }
@@ -55,7 +58,7 @@ const casos = [
   [`cd ${RW}\\packages\\executor; npm test 2>&1 | Select-Object -Last 40`, R, true],
   [`Set-Location "${WT}"; node --test packages/api/test/x.test.js`, R, true],
   [`Set-Location "${FORA}"; npm test`, R, false],           // área desconhecida
-  [`Set-Location "${RW}\\..\\..\\evil"; node x.js`, R, false], // traversal
+  [`Set-Location "${RW}\\${SUBIDA}\\okpb-evil"; node x.js`, R, false], // traversal até a raiz
   ['Set-Location $naoDefinida; npm test', R, false],        // destino indeterminado
 
   // ── atribuição esconde o cmdlet do matcher (39 casos reais) ───────────────
