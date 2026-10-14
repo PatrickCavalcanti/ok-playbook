@@ -14,7 +14,15 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEITURA, SCRATCH as AREAS_SCRATCH, PROJETO, canon, dentroDeAlguma } from '../lib/areas.mjs';
+import { LEITURA, SCRATCH as AREAS_SCRATCH, PROJETO, AREAS_LOCAL, canon, dentroDeAlguma } from '../lib/areas.mjs';
+
+// areas.local.json existe mas é inválido: o hook cai nos defaults em silêncio, e a
+// suite diria só "LEITURA não tem irmão". Falha alto, antes de qualquer caso.
+if (AREAS_LOCAL.estado === 'invalido') {
+  console.error(`FALHA: ${AREAS_LOCAL.arquivo} é inválido (${AREAS_LOCAL.motivo}) — o hook está usando só os defaults`);
+  process.exit(1);
+}
+for (const d of AREAS_LOCAL.descartados) console.log(`aviso: areas.local.json — entrada descartada: ${d}`);
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const HOOK = path.join(aqui, '..', 'auto-approve-project-bash.mjs');
@@ -156,6 +164,59 @@ const casos = [
   [`cd "${WT}" && git worktree add ../novo -b feat/novo`, R, true],
   [`cd "${WT}" && git tag -l`, R, true],
   [`cd "${WT}" && git tag v2`, R, true],
+
+  // ── env/xargs/find não escondem o comando de dentro ────────────────────────
+  [`cd "${WT}" && env git stash drop`, R, false],
+  [`cd "${WT}" && env FOO=1 git branch -D x`, R, false],
+  ['git branch --merged | xargs git branch -D', R, false],
+  ['env rm -rf src', R, false],
+  ['env -S "git stash drop"', R, false],                         // -S executa a string
+  ['echo dist | xargs rm -rf', R, false],
+  ['echo dist | xargs -I {} rm -rf {}', R, false],
+  ['ls | xargs -n 1 -P 4 sh -c "echo"', R, false],
+  ['find . -delete', R, false],
+  ['find . -name x -exec rm {} \;', R, false],
+  ['find . -name x -execdir rm {} +', R, false],
+  ['find . -fprint /tmp/o.txt', R, false],
+  ...soComIrmao([
+  [`cd "${IRMAO}" && echo dist | xargs rm -rf`, R, false],
+  [`cd "${IRMAO}" && git stash`, R, false],              // stash puro = push = escrita
+  [`cd "${IRMAO}" && git stash push -m x`, R, false],
+  [`cd "${IRMAO}" && git stash list`, R, true],
+  [`cd "${IRMAO}" && git stash show`, R, true],
+  ]),
+  // …e o que continua como antes:
+  ['ls | xargs grep foo', R, true],
+  ['ls | xargs -I {} cat {}', R, true],
+  ['ls | xargs -n 1 -P 4 wc -l', R, true],
+  ['ls | xargs -0 -r head -5', R, true],
+  ['env FOO=1 node --version', R, true],                         // node já é aprovado nu
+  ['env FOO=1 ls', R, true],
+  ['env', R, true],
+  ['find . -name x', R, true],
+  ['find . -name "*.md" -type f -print', R, true],
+
+  // ── git que mexe no repositório inteiro, também na worktree ───────────────
+  [`cd "${WT}" && git remote add x http://h/r`, R, false],
+  [`cd "${WT}" && git remote set-url origin http://h/r`, R, false],
+  [`cd "${WT}" && git remote remove origin`, R, false],
+  [`cd "${WT}" && git remote prune origin`, R, false],
+  [`cd "${WT}" && git reflog expire --expire=now --all`, R, false],
+  [`cd "${WT}" && git reflog delete HEAD@{1}`, R, false],
+  [`cd "${WT}" && git gc --prune=now`, R, false],
+  [`cd "${WT}" && git checkout -B existente`, R, false],
+  [`cd "${WT}" && git switch -C existente`, R, false],
+  [`cd "${WT}" && git switch --force-create existente`, R, false],
+  [`cd "${WT}" && git config user.name x`, R, false],
+  [`cd "${WT}" && git config --global core.autocrlf true`, R, false],
+  [`cd "${WT}" && git remote -v`, R, true],
+  [`cd "${WT}" && git remote show origin`, R, true],
+  [`cd "${WT}" && git reflog`, R, true],
+  [`cd "${WT}" && git gc`, R, true],
+  [`cd "${WT}" && git checkout -b nova`, R, true],
+  [`cd "${WT}" && git switch -c nova`, R, true],
+  [`cd "${WT}" && git config --get user.name`, R, true],
+  [`cd "${WT}" && git config --list`, R, true],
 
   // ── scratch: descartável, escrita livre ───────────────────────────────────
   [`cat > ${SCRATCH}/x.py <<'EOF'\nprint(1)\nEOF`, R, true],

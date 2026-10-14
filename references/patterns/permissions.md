@@ -307,7 +307,7 @@ A whitelist envelhece junto com o projeto, mas **o que é do projeto não se edi
 { "scratch": ["c:/scratch"], "leitura": ["e:/projetos/irmao"], "headsProjeto": ["drizzle-kit"] }
 ```
 
-Todas as chaves são arrays de strings, opcionais, e **somam** aos defaults. Paths absolutos (o hook canonicaliza). JSON ausente ou inválido = só os defaults — o hook nunca quebra por causa dele, só aprova menos; com `OK_HOOK_DEBUG=1` o stderr diz por que foi ignorado. O mapa:
+Todas as chaves são arrays de strings, opcionais, e **somam** aos defaults. Paths absolutos (o hook canonicaliza). JSON ausente ou inválido = só os defaults — o hook nunca quebra por causa dele, só aprova menos; com `OK_HOOK_DEBUG=1` o stderr diz por que foi ignorado. O arquivo é **versionado** (uma sessão numa worktree usa os hooks da cópia da worktree). Entrada que ampliaria demais a aprovação é descartada, com aviso: `..` que sobra no path, só um drive ou `/`, o próprio projeto ou um ancestral dele/da home em `scratch`/`leitura`, e shell, interpretador de comando ou wrapper (`bash`, `sh`, `pwsh`, `env`, `xargs`, `sudo`, `eval`, `exec`, `nohup`, `time`, `start`…) em `headsProjeto`. Os hook-tests falham se o JSON existe mas é inválido. O mapa:
 
 | Quero… | Mexa em | Onde exatamente |
 |---|---|---|

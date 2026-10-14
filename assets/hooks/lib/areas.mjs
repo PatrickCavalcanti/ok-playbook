@@ -21,7 +21,14 @@
  *
  * Todas as chaves são opcionais e SOMAM aos defaults abaixo (paths absolutos;
  * a canonicalização é feita aqui). JSON ausente ou inválido = só os defaults —
- * o hook nunca quebra por causa dele (com OK_HOOK_DEBUG, o stderr avisa).
+ * o hook nunca quebra por causa dele (com OK_HOOK_DEBUG, o stderr avisa), e
+ * entrada que ampliaria demais a aprovação (shell em headsProjeto, raiz/drive/
+ * ancestral do projeto em scratch/leitura, `..`) é descartada.
+ *
+ * O `areas.local.json` é VERSIONADO (commitado com o projeto): uma sessão aberta
+ * numa worktree usa os hooks da cópia da worktree, então o arquivo precisa estar
+ * lá — fora do git, a worktree ficaria só com os defaults.
+ *
  * PROJETO é calculado em tempo de execução (nada a preencher). Calibre MEDINDO
  * (`tools/medir-comandos.mjs`), não adivinhando.
  */
@@ -29,40 +36,6 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve as resolverPath } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-/**
- * Lê `../areas.local.json` (relativo a este arquivo), uma vez por execução e de
- * forma síncrona. Qualquer problema → `{}` (só os defaults): é a direção segura,
- * porque área a menos significa aprovar menos. Tudo-ou-nada para o que está
- * malformado (chave que não é array de strings); entrada de path que não é
- * absoluta é descartada sozinha. Roda antes de `DEBUG` ser inicializado (por isso
- * lê OK_HOOK_DEBUG direto); `canon`/`commandBasename` são function declarations.
- */
-const LOCAL = (() => {
-  const aviso = (m) => { if (process.env.OK_HOOK_DEBUG) process.stderr.write(`[hook] areas.local.json: ${m}\n`); };
-  let bruto;
-  try {
-    bruto = readFileSync(resolverPath(dirname(fileURLToPath(import.meta.url)), '..', 'areas.local.json'), 'utf8');
-  } catch { return {}; } // ausente é o caso normal
-  try {
-    const j = JSON.parse(bruto.replace(/^\uFEFF/, ''));
-    if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('a raiz precisa ser um objeto');
-    const lista = (k) => {
-      if (j[k] == null) return [];
-      if (!Array.isArray(j[k]) || !j[k].every((s) => typeof s === 'string')) throw new Error(`"${k}" precisa ser um array de strings`);
-      return j[k];
-    };
-    const paths = (k) => lista(k).map((p) => canon(p)).filter((p) => {
-      const ok = /^([a-z]:)?\/./.test(p); // absoluto; `c:` sozinho (drive inteiro) ou relativo não entram
-      if (!ok) aviso(`"${k}": ignorado (precisa ser path absoluto): ${p}`);
-      return ok;
-    });
-    return { scratch: paths('scratch'), leitura: paths('leitura'), headsProjeto: lista('headsProjeto').map(commandBasename).filter(Boolean) };
-  } catch (e) {
-    aviso(`inválido, usando só os defaults (${e.message})`);
-    return {};
-  }
-})();
 
 /**
  * Path do projeto: ABSOLUTO, lowercase, forward slashes, COM drive.
@@ -82,6 +55,70 @@ export const PROJETO = canon(
 
 /** Cache de plugins do Claude Code — scripts de skill executam a partir daqui. */
 export const PLUGINS = `${(process.env.USERPROFILE || process.env.HOME || '').replace(/\\/g, '/').toLowerCase()}/.claude/plugins`;
+
+/**
+ * Lê `../areas.local.json` (relativo a este arquivo), uma vez por execução e de
+ * forma síncrona. Qualquer problema → só os defaults: é a direção segura, porque
+ * área a menos significa aprovar menos. Tudo-ou-nada para o que está malformado
+ * (JSON quebrado, chave que não é array de strings); entrada individual que
+ * AMPLIARIA a aprovação é descartada sozinha, com aviso:
+ *   - path não absoluto, só um drive ou a raiz `/`;
+ *   - path com segmento `..` que sobrou depois do canon (`c:/..`, `e:/a/../..`) —
+ *     o canon mantém o `..` que passa da raiz, e ele escaparia da área;
+ *   - `scratch`/`leitura` que seja o PROJETO, ancestral dele ou ancestral da home
+ *     (viraria escrita livre no projeto inteiro, ou leitura da máquina toda);
+ *   - `headsProjeto` que seja shell, interpretador de comando ou wrapper (executa
+ *     qualquer coisa e escapa de todas as checagens por argumento).
+ * O resultado do diagnóstico é exportado em AREAS_LOCAL (os hook-tests leem).
+ * Roda depois de PROJETO e antes de DEBUG (por isso lê OK_HOOK_DEBUG direto, e não
+ * usa as arrow functions exportadas abaixo); `canon`/`commandBasename` são function declarations.
+ */
+const HEADS_RECUSADOS = new Set([
+  'bash', 'sh', 'zsh', 'dash', 'fish', 'ksh', 'csh', 'tcsh', 'powershell', 'pwsh', 'wsl', 'busybox',
+  'env', 'xargs', 'sudo', 'doas', 'su', 'eval', 'exec', 'nohup', 'time', 'start', 'command', 'builtin',
+]);
+export const AREAS_LOCAL = { estado: 'ausente', motivo: '', arquivo: '', descartados: [] };
+const LOCAL = (() => {
+  const diag = AREAS_LOCAL;
+  const aviso = (m) => { if (process.env.OK_HOOK_DEBUG) process.stderr.write(`[hook] areas.local.json: ${m}\n`); };
+  const descarta = (m) => { diag.descartados.push(m); aviso(m); };
+  diag.arquivo = resolverPath(dirname(fileURLToPath(import.meta.url)), '..', 'areas.local.json');
+  let bruto;
+  try {
+    bruto = readFileSync(diag.arquivo, 'utf8');
+  } catch { return {}; } // ausente é o caso normal
+  try {
+    const j = JSON.parse(bruto.replace(/^\uFEFF/, ''));
+    if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('a raiz precisa ser um objeto');
+    const lista = (k) => {
+      if (j[k] == null) return [];
+      if (!Array.isArray(j[k]) || !j[k].every((s) => typeof s === 'string')) throw new Error(`"${k}" precisa ser um array de strings`);
+      return j[k];
+    };
+    const home = canon(process.env.USERPROFILE || process.env.HOME || '');
+    const dentro = (area, p) => p === area || p.startsWith(`${area}/`); // dentroDe ainda não foi inicializado
+    const paths = (k) => lista(k).map((p) => canon(p)).filter((p) => {
+      const motivo = !/^([a-z]:)?\/./.test(p) ? 'precisa ser path absoluto, não só um drive nem a raiz'
+        : p.split('/').includes('..') ? 'tem segmento ".." que escapa da raiz'
+        : (dentro(p, PROJETO) || (home && dentro(p, home))) ? 'é o projeto, ou ancestral do projeto ou da home'
+        : '';
+      if (motivo) descarta(`"${k}": ignorado (${motivo}): ${p}`);
+      return !motivo;
+    });
+    const heads = lista('headsProjeto').map(commandBasename).filter((h) => {
+      const ruim = HEADS_RECUSADOS.has(h);
+      if (ruim) descarta(`"headsProjeto": ignorado (shell, interpretador de comando ou wrapper): ${h}`);
+      return h && !ruim;
+    });
+    diag.estado = 'valido';
+    return { scratch: paths('scratch'), leitura: paths('leitura'), headsProjeto: heads };
+  } catch (e) {
+    diag.estado = 'invalido';
+    diag.motivo = e.message;
+    aviso(`inválido, usando só os defaults (${e.message})`);
+    return {};
+  }
+})();
 
 /**
  * Descartáveis: escrita livre, de qualquer escopo. `/tmp` do Git Bash aponta
@@ -268,13 +305,22 @@ function gitEstadoCompartilhado(sub, resto) {
     case 'worktree': return tem(/^(remove|prune|move)$/);
     case 'tag': return tem(/^-[a-zA-Z]*[df][a-zA-Z]*$/) || tem(/^--(delete|force)$/);
     case 'update-ref': return tem(/^-d$/);
+    // refs remotas, reflog, objetos e .git/config também são do repositório inteiro
+    case 'remote': return tem(/^(add|remove|rm|rename|set-url|set-head|set-branches|prune)$/);
+    case 'reflog': return tem(/^(expire|delete)$/);
+    case 'gc': return tem(/^--prune(=.*)?$/);
+    // -B / -C reescrevem uma branch que já existe (`-b`/`-c` só criam)
+    case 'checkout': return tem(/^-[a-zA-Z]*B[a-zA-Z]*$/);
+    case 'switch': return tem(/^-[a-zA-Z]*C[a-zA-Z]*$/) || tem(/^--force-create$/);
+    // `config` só lê com --get*/--list; o resto grava (.git/config é compartilhado)
+    case 'config': return !tem(/^(--get|--get-all|--get-regexp|--get-urlmatch|--list|-l)$/);
     default: return false;
   }
 }
 
 /** Formas de leitura de subcomandos que também têm forma de escrita. */
 function gitSomenteLeitura(sub, args) {
-  if (['branch', 'tag', 'stash', 'worktree', 'remote'].includes(sub)) {
+  if (['branch', 'tag', 'worktree', 'remote'].includes(sub)) {
     if (args.some((a) => /^(-[dDmMafF]|--delete|--move|--force|--set-upstream)$/.test(a))) return false;
     if (args.some((a) => /^(add|drop|clear|push|pop|prune|remove|set-url|rename)$/.test(a))) return false;
     // `--list <padrão>` e afins são leitura mesmo com argumento posicional.
@@ -285,6 +331,18 @@ function gitSomenteLeitura(sub, args) {
 }
 
 // ── checagens por argumento (espelham rules limitadas) ───────────────────────
+
+/**
+ * Comandos que `env`/`xargs` podem embrulhar: estritamente de leitura — nenhum
+ * escreve, executa outro comando ou tem forma destrutiva (fora: git, sed, awk,
+ * sort -o, rg --pre, find, curl, docker, interpretadores).
+ */
+const LEITURA_ESTRITA = new Set([
+  'cat', 'head', 'tail', 'ls', 'grep', 'egrep', 'fgrep', 'wc', 'stat', 'file',
+  'basename', 'dirname', 'realpath', 'readlink', 'echo', 'printf', 'pwd', 'which',
+  'cut', 'tr', 'nl', 'tac', 'rev', 'fold', 'column', 'comm', 'diff', 'seq', 'du',
+  'true', 'false', 'test', '[',
+]);
 
 /** Args que são path (descarta flags e `=` de opção longa). */
 export const pathArgs = (args) => args.filter((a) => !/^-/.test(a) && !a.includes('='));
@@ -329,10 +387,53 @@ export const CHECAGENS_DE_ARGUMENTO = {
     }
     if (GIT_PERIGOSO.test(sub)) return false;
     if (gitEstadoCompartilhado(sub, resto)) return false; // todo escopo
-    const leitura = gitSomenteLeitura(sub, args);
+    // `git stash` puro (sem subcomando) é `stash push` — escrita. Só `list`/`show` leem.
+    const leitura = sub === 'stash' ? resto.some((a) => /^(list|show)$/.test(a)) : gitSomenteLeitura(sub, args);
     if (ctx.escopo === 'leitura' && GIT_ESCRITA.test(sub) && !leitura) return false;
     if (ctx.escopo === 'projeto' && !leitura && gitDestrutivoNoRoot(sub, args)) return false;
     return true;
+  },
+  // `env`/`xargs`/`find` executam OUTRO comando e, sem checagem, driblam todas as
+  // outras: `env git stash drop`, `... | xargs git branch -D`, `find . -delete`
+  // saíam aprovados porque o head (env/xargs/find) está no whitelist. Aqui o comando
+  // de dentro só passa se for estritamente de leitura; senão defere.
+  env(args) {
+    const resto = [];
+    for (let i = 0; i < args.length; i++) {
+      const a = args[i];
+      if (/^(-S.*|--split-string.*|-C.*|--chdir.*)$/.test(a)) return false; // -S executa string; -C muda de dir
+      if (a === '-u' || a === '--unset') { i++; continue; }
+      if (/^-/.test(a) || /^[A-Za-z_][A-Za-z0-9_]*=/.test(a)) continue;
+      resto.push(...args.slice(i)); break;
+    }
+    if (!resto.length) return true; // só imprime/ajusta o ambiente
+    const inner = commandBasename(resto[0]);
+    // node/python já são aprovados nus (HEADS_LEITURA); `env` não lhes dá poder novo.
+    return LEITURA_ESTRITA.has(inner) || ['node', 'python', 'python3'].includes(inner);
+  },
+  xargs(args) {
+    // flags que consomem o valor seguinte (curtas, em cluster ou soltas, e longas sem `=`)
+    const VALOR_CURTO = 'InLPdaEsJRS';
+    const VALOR_LONGO = /^--(max-args|max-procs|max-lines|max-chars|delimiter|arg-file|process-slot-var)$/;
+    for (let i = 0; i < args.length; i++) {
+      const a = args[i];
+      if (a === '--') return args.slice(i + 1).length === 0 || LEITURA_ESTRITA.has(commandBasename(args[i + 1]));
+      if (VALOR_LONGO.test(a)) { i++; continue; }
+      if (/^--/.test(a)) continue;
+      if (/^-[A-Za-z0-9]+$/.test(a)) {
+        for (let k = 1; k < a.length; k++) {
+          if (!VALOR_CURTO.includes(a[k])) continue;
+          if (k === a.length - 1) i++; // valor no próximo token; senão está colado (`-n1`)
+          break;
+        }
+        continue;
+      }
+      return LEITURA_ESTRITA.has(commandBasename(a));
+    }
+    return true; // sem comando, xargs roda `echo`
+  },
+  find(args) {
+    return !args.some((a) => /^-(exec|execdir|ok|okdir|delete|fprint|fprint0|fprintf|fls)$/.test(a));
   },
   // Na worktree/scratch `rm` é livre (área descartável). No root, só o que a
   // rule `Bash(rm -rf *.worktrees/*)` já permitia. Na leitura, nunca.

