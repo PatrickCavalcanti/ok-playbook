@@ -91,7 +91,7 @@ test('hook legado em matcher que o snippet não conhece fica como está', () => 
   const p = proj({ hooks: { PreToolUse: [e] } });
   const rel = aplicar(p, { paths: {} });
   assert.deepEqual(JSON.parse(ler(p)).hooks.PreToolUse[0], e);
-  assert.deepEqual(rel, []);
+  assert.deepEqual(rel, [`hook legado em matcher sem canônico, mantido: Edit → ${LEG_W}`]);
 });
 
 test('preserva BOM, CRLF e indentação', () => {
@@ -199,4 +199,27 @@ test('snippet real: ask cobre o git de estado compartilhado nos dois shells', ()
   const real = JSON.parse(readFileSync(join(SCRIPTS, '..', 'assets/settings-snippet.json'), 'utf8'));
   for (const c of ['git stash drop', 'git branch -D', 'git worktree remove', 'git tag -d'])
     for (const sh of ['Bash', 'PowerShell']) assert.ok(real.permissions.ask.includes(`${sh}(${c}*)`), `${sh}(${c}*)`);
+});
+
+test('legado em matcher sem canônico: fica, não registra, não manda remover; trocando o matcher, o apply seguinte troca', () => {
+  const p = proj({ hooks: { PreToolUse: [{ matcher: 'Bash|PowerShell', hooks: [cmd(LEG_W)] }] } });
+  mkdirSync(join(p, '.claude/hooks'), { recursive: true });
+  writeFileSync(join(p, '.claude/hooks/auto-approve-worktree-bash.js'), '// legado');
+  const m = { paths: {} };
+  const rel = aplicar(p, m);
+  assert.deepEqual(rel, [`hook legado em matcher sem canônico, mantido: Bash|PowerShell → ${LEG_W}`]);
+  assert.deepEqual(JSON.parse(ler(p)).hooks.PreToolUse[0].hooks, [cmd(LEG_W)]);
+  assert.equal(m.settings.legado.hooks.includes('auto-approve-worktree-bash.js'), false);
+  // outro evento, mesmo tratamento
+  const q = proj({ hooks: { PostToolUse: [{ matcher: 'Bash', hooks: [cmd(LEG_P)] }] } });
+  assert.match(aplicar(q, { paths: {} })[0], /^hook legado em matcher sem canônico, mantido: Bash → /);
+  // o dono troca o matcher para Bash: o próximo apply troca e registra
+  const st = JSON.parse(ler(p));
+  assert.equal(st.hooks.PreToolUse.length, 2, 'o canônico do snippet foi acrescentado ao lado');
+  st.hooks.PreToolUse = [{ matcher: 'Bash', hooks: [cmd(LEG_W)] }];
+  writeFileSync(join(p, '.claude/settings.json'), JSON.stringify(st, null, 2));
+  const rel2 = aplicar(p, m);
+  assert.ok(rel2.includes(`hook legado trocado: ${LEG_W} → ${CANON}`));
+  assert.ok(m.settings.legado.hooks.includes('auto-approve-worktree-bash.js'));
+  assert.ok(rel2.includes('arquivo de hook legado no disco, remova: .claude/hooks/auto-approve-worktree-bash.js'));
 });

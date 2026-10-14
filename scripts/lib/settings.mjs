@@ -33,10 +33,10 @@ const arquivosDe = (cmd) => String(cmd ?? '').split(/[\s"'\\/]+/).filter(Boolean
 // Troca hooks 0.x pelo canônico do mesmo matcher. Só troca se o arquivo canônico vai existir
 // (item hook:<arquivo> não excluído, ou arquivo já no disco); senão mantém e não registra como tratado.
 // Se o canônico já está em QUALQUER entrada do evento com o mesmo matcher, o legado só sai.
-// Devolve { relato, mantidos } — mantidos = nomes legados que ficaram.
+// Devolve { relato, exclusao } — exclusao = hooks que ficaram por causa do canônico excluído.
 function limparHooksLegados(atual, doSnippet, nomes, m, dirHooks) {
   const relato = [];
-  const mantidos = new Set();
+  const exclusao = new Set();
   for (const [evento, entradas] of Object.entries(atual.hooks ?? {})) {
     if (!Array.isArray(entradas)) continue;
     for (const entrada of [...entradas]) {
@@ -57,7 +57,7 @@ function limparHooksLegados(atual, doSnippet, nomes, m, dirHooks) {
         }
         const existira = arqCanonico.every((a) => m.itens?.[`hook:${a}`]?.estado !== 'excluido' || existsSync(join(dirHooks, a)));
         if (!existira) {
-          legados.forEach((n) => mantidos.add(n));
+          exclusao.add(h);
           relato.push(`hook legado mantido: canônico excluído do projeto (${arqCanonico.join(', ')})`);
           continue;
         }
@@ -66,7 +66,7 @@ function limparHooksLegados(atual, doSnippet, nomes, m, dirHooks) {
       }
     }
   }
-  return { relato, mantidos };
+  return { relato, exclusao };
 }
 
 // Acrescenta só o que o playbook ainda não ofereceu; atualiza m.settings. Na primeira vez
@@ -90,16 +90,27 @@ export function mesclarSettings(lido, doSnippet, m) {
   reg.legado.allow = uniao(reg.legado.allow, regras);
   const nomes = (legado.hooks ?? []).filter((n) => !reg.legado.hooks.includes(n));
   const dirHooks = join(dirname(lido.caminho), 'hooks');
-  let mantidos = new Set();
+  let exclusao = new Set();
   if (nomes.length) {
     const r = limparHooksLegados(atual, doSnippet, nomes, m, dirHooks);
-    mantidos = r.mantidos;
+    exclusao = r.exclusao;
     if (r.relato.some((l) => !l.startsWith('hook legado mantido'))) mudou = true;
     relato.push(...r.relato);
-    reg.legado.hooks = uniao(reg.legado.hooks, nomes.filter((n) => !mantidos.has(n)));
   }
-  // arquivo de hook 0.x ainda no disco: não apaga, só avisa (o agente remove); hook que ficou em uso não avisa
-  for (const n of legado.hooks ?? []) if (!mantidos.has(n) && existsSync(join(dirHooks, n))) relato.push(`arquivo de hook legado no disco, remova: .claude/hooks/${n}`);
+  // o que ainda cita arquivo legado depois da limpeza (qualquer evento ou matcher) segue em uso:
+  // não vira "tratado" (um apply futuro revê) e o arquivo não pode ser apontado para remoção
+  const citados = new Set();
+  for (const entradas of Object.values(atual.hooks ?? {}))
+    for (const e of Array.isArray(entradas) ? entradas : [])
+      for (const h of Array.isArray(e?.hooks) ? e.hooks : [])
+        for (const n of arquivosDe(h?.command)) {
+          if (!(legado.hooks ?? []).includes(n)) continue;
+          citados.add(n);
+          if (nomes.includes(n) && !exclusao.has(h)) relato.push(`hook legado em matcher sem canônico, mantido: ${e.matcher ?? ''} → ${h.command}`);
+        }
+  reg.legado.hooks = uniao(reg.legado.hooks, nomes.filter((n) => !citados.has(n)));
+  // arquivo de hook 0.x ainda no disco: não apaga, só avisa (o agente remove) — só quando nada mais o cita
+  for (const n of legado.hooks ?? []) if (!citados.has(n) && existsSync(join(dirHooks, n))) relato.push(`arquivo de hook legado no disco, remova: .claude/hooks/${n}`);
   const novo = doSnippet.permissions ?? {};
   for (const k of ['allow', 'deny', 'ask']) {
     const lista = atual.permissions?.[k] ?? [];
