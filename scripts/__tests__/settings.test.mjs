@@ -181,3 +181,22 @@ test('canônico em outra entrada com o mesmo matcher: o legado só sai', () => {
   aplicar(q, { paths: {} });
   assert.deepEqual(JSON.parse(ler(q)).hooks.PreToolUse, [{ matcher: 'Bash', hooks: [cmd(CANON)] }]);
 });
+
+test('ask: mescla uma vez e não volta depois que o dono remove', () => {
+  const p = proj({ permissions: { allow: ['Bash(git *)'] } });
+  const m = { itens: {} };
+  const snip = { ...snippet(), permissions: { ...snippet().permissions, ask: ['Bash(git stash drop*)'] } };
+  aplicar(p, m, snip);
+  assert.deepEqual(JSON.parse(ler(p)).permissions.ask, ['Bash(git stash drop*)']);
+  const sem = JSON.parse(ler(p));
+  sem.permissions.ask = [];
+  writeFileSync(join(p, '.claude/settings.json'), JSON.stringify(sem, null, 2));
+  aplicar(p, m, snip);
+  assert.deepEqual(JSON.parse(ler(p)).permissions.ask, []);
+});
+
+test('snippet real: ask cobre o git de estado compartilhado nos dois shells', () => {
+  const real = JSON.parse(readFileSync(join(SCRIPTS, '..', 'assets/settings-snippet.json'), 'utf8'));
+  for (const c of ['git stash drop', 'git branch -D', 'git worktree remove', 'git tag -d'])
+    for (const sh of ['Bash', 'PowerShell']) assert.ok(real.permissions.ask.includes(`${sh}(${c}*)`), `${sh}(${c}*)`);
+});

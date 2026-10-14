@@ -21,7 +21,7 @@ export function lerSettings(projeto) {
 }
 
 const registroDe = (m) => ({
-  allow: [...(m.settings?.allow ?? [])], deny: [...(m.settings?.deny ?? [])], hooks: [...(m.settings?.hooks ?? [])],
+  allow: [...(m.settings?.allow ?? [])], deny: [...(m.settings?.deny ?? [])], ask: [...(m.settings?.ask ?? [])], hooks: [...(m.settings?.hooks ?? [])],
   // legado já tratado (regras e nomes de hook 0.x): o que o dono re-adicionar depois não é removido de novo
   legado: { allow: [...(m.settings?.legado?.allow ?? [])], hooks: [...(m.settings?.legado?.hooks ?? [])] },
 });
@@ -101,7 +101,7 @@ export function mesclarSettings(lido, doSnippet, m) {
   // arquivo de hook 0.x ainda no disco: não apaga, só avisa (o agente remove); hook que ficou em uso não avisa
   for (const n of legado.hooks ?? []) if (!mantidos.has(n) && existsSync(join(dirHooks, n))) relato.push(`arquivo de hook legado no disco, remova: .claude/hooks/${n}`);
   const novo = doSnippet.permissions ?? {};
-  for (const k of ['allow', 'deny']) {
+  for (const k of ['allow', 'deny', 'ask']) {
     const lista = atual.permissions?.[k] ?? [];
     for (const r of novo[k] ?? []) {
       if (reg[k].includes(r) || lista.includes(r)) continue;

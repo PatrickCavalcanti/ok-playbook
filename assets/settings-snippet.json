@@ -9,6 +9,8 @@
 
   "_comment_legado": "Legado das versões 0.x. O apply, UMA vez por projeto (registrado em ok-playbook.json → settings.legado), tira do permissions.allow as regras de legado.allow — herdadas do snippet 0.x, o canon as retirou de propósito (ver _comment_rm), e com elas rm -rf src no root passa sem perguntar — e troca, nos hooks do projeto, o comando que cita um arquivo de legado.hooks pelo canônico do mesmo matcher (se o canônico já estiver na lista, o legado só sai; outros hooks da lista ficam). O que o dono re-adicionar depois não é removido de novo. O arquivo do hook legado NÃO é apagado: o apply avisa e o agente remove. Esta chave não é mesclada em settings.json.",
 
+  "_comment_ask": "Git que mexe em estado do repositório INTEIRO — stash, branches, tags, registro de worktrees — sempre pergunta, em qualquer área. O hook já não os aprova (areas.mjs, gitEstadoCompartilhado), mas Bash(git *) no allow aprovaria por rule: ask vem antes de allow na avaliação e força a confirmação. A worktree é descartável só no working tree dela.",
+
   "legado": {
     "allow": [
       "Bash(rm *)",
@@ -21,6 +23,34 @@
   },
 
   "permissions": {
+    "ask": [
+      "Bash(git stash drop*)",
+      "Bash(git stash clear*)",
+      "Bash(git stash pop*)",
+      "Bash(git branch -D*)",
+      "Bash(git branch -M*)",
+      "Bash(git branch -f*)",
+      "Bash(git branch --force*)",
+      "Bash(git worktree remove*)",
+      "Bash(git worktree prune*)",
+      "Bash(git worktree move*)",
+      "Bash(git tag -d*)",
+      "Bash(git tag --delete*)",
+      "Bash(git update-ref -d*)",
+      "PowerShell(git stash drop*)",
+      "PowerShell(git stash clear*)",
+      "PowerShell(git stash pop*)",
+      "PowerShell(git branch -D*)",
+      "PowerShell(git branch -M*)",
+      "PowerShell(git branch -f*)",
+      "PowerShell(git branch --force*)",
+      "PowerShell(git worktree remove*)",
+      "PowerShell(git worktree prune*)",
+      "PowerShell(git worktree move*)",
+      "PowerShell(git tag -d*)",
+      "PowerShell(git tag --delete*)",
+      "PowerShell(git update-ref -d*)"
+    ],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",

@@ -180,6 +180,8 @@ Não adianta *deixar de listar* `git push --force` esperando que ele peça confi
 
 `permissions.deny` ganha das duas: **hook não bypassa deny**. É lá que a lista de nunca deve morar.
 
+O meio-termo é `permissions.ask`, avaliado antes do `allow`: o comando continua possível, mas sempre pede confirmação. O snippet usa `ask` para o git que mexe em estado do repositório inteiro (`stash drop|clear|pop`, `branch -D|-M|-f`, `worktree remove|prune|move`, `tag -d`, `update-ref -d`) — o hook já não os aprova, e sem o `ask` o `Bash(git *)` os liberaria.
+
 ```json
 {
   "permissions": {
