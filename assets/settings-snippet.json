@@ -7,6 +7,19 @@
 
   "_comment_rm": "Bash(rm *) e Bash(mv *) foram REMOVIDOS: aprovavam rm -rf src no root e anulavam a política de destrutivos do hook (worktree livre, root pede). Bash(rm -rf *.worktrees/*) ficou.",
 
+  "_comment_legado": "Legado das versões 0.x. O apply, UMA vez por projeto (registrado em ok-playbook.json → settings.legado), tira do permissions.allow as regras de legado.allow — herdadas do snippet 0.x, o canon as retirou de propósito (ver _comment_rm), e com elas rm -rf src no root passa sem perguntar — e troca, nos hooks do projeto, o comando que cita um arquivo de legado.hooks pelo canônico do mesmo matcher (se o canônico já estiver na lista, o legado só sai; outros hooks da lista ficam). O que o dono re-adicionar depois não é removido de novo. O arquivo do hook legado NÃO é apagado: o apply avisa e o agente remove. Esta chave não é mesclada em settings.json.",
+
+  "legado": {
+    "allow": [
+      "Bash(rm *)",
+      "Bash(mv *)"
+    ],
+    "hooks": [
+      "auto-approve-worktree-bash.js",
+      "auto-approve-project-bash.js"
+    ]
+  },
+
   "permissions": {
     "deny": [
       "Bash(git push --force*)",
